@@ -1,7 +1,7 @@
 .qodo/
 .vscode/
 __pycache__/
-#u2net.onnx
+u2net.onnx
 node_modules/
 dist
 uploads/
