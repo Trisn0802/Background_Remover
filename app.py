@@ -408,7 +408,7 @@ def logout():
 
 @app.route("/upload")
 def upload_page():
-    return render_template("upload.html", page_title="Upload")
+    return render_template("upload.html", page_title="RemBG | Upload")
 
 
 @app.route("/process", methods=["POST"])
@@ -530,7 +530,7 @@ def gallery_page():
         "gallery.html",
         images=images,
         users=users,
-        page_title="Gallery",
+        page_title="RemBG | Gallery",
         q=q,
         date_filter=date_filter,
         owner_filter=owner_filter,
