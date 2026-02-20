@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title or 'Background Remover' }}</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('vendor', filename='bootstrap/dist/css/bootstrap.min.css') }}"
+    />
+    <style>
+      :root {
+        --app-bg: #f4f6fb;
+        --app-text: #1f2937;
+        --nav-bg: #ffffff;
+        --nav-muted: #8a8f9c;
+        --nav-active: #111827;
+        --nav-bubble-fg: #ffffff;
+      }
+
+      body.theme-dark {
+        --app-bg: #0f172a;
+        --app-text: #e5e7eb;
+        --nav-bg: #111827;
+        --nav-muted: #9ca3af;
+        --nav-active: #f8fafc;
+        --nav-bubble-fg: #111827;
+      }
+
+      body {
+        background: radial-gradient(circle at top right, #dbeafe 0%, transparent 35%),
+          radial-gradient(circle at bottom left, #fde68a 0%, transparent 35%),
+          var(--app-bg);
+        color: var(--app-text);
+        min-height: 100vh;
+        padding-bottom: 92px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      body.page-ready {
+        opacity: 1;
+      }
+
+      body.page-leave {
+        opacity: 0;
+      }
+
+      .app-shell {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      .bottom-nav-wrap {
+        position: fixed;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        width: min(720px, calc(100vw - 16px));
+        z-index: 1040;
+      }
+
+      .modal-backdrop {
+        z-index: 1055 !important;
+      }
+
+      .modal {
+        z-index: 1060 !important;
+      }
+
+      .bottom-nav {
+        background: var(--nav-bg);
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(31, 41, 55, 0.16);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        align-items: end;
+        padding: 8px 4px;
+      }
+
+      .bottom-nav a {
+        text-decoration: none;
+        color: var(--nav-muted);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.76rem;
+        font-weight: 500;
+        transition: transform 0.18s ease, color 0.18s ease;
+      }
+
+      .bottom-nav a:active {
+        transform: scale(0.95);
+      }
+
+      .bottom-nav .nav-icon {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+      }
+
+      .bottom-nav .active .nav-bubble {
+        width: 54px;
+        height: 54px;
+        margin-top: -28px;
+        border-radius: 50%;
+        background: var(--nav-active);
+        color: var(--nav-bubble-fg);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 8px 20px rgba(17, 24, 39, 0.35);
+      }
+
+      .bottom-nav .active {
+        color: var(--app-text);
+        font-weight: 700;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+      }
+
+      .img-card {
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .img-card img {
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+      }
+
+      body.theme-dark .card,
+      body.theme-dark .modal-content,
+      body.theme-dark .table,
+      body.theme-dark .alert {
+        background-color: #111827;
+        color: #e5e7eb;
+        border-color: #374151;
+      }
+
+      body.theme-dark .table {
+        --bs-table-bg: #111827;
+        --bs-table-color: #e5e7eb;
+        --bs-table-border-color: #374151;
+      }
+
+      body.theme-dark .card-header.bg-white,
+      body.theme-dark .card-header {
+        background-color: #0f172a !important;
+        color: #e5e7eb !important;
+        border-color: #374151 !important;
+      }
+
+      body.theme-dark .text-muted {
+        color: #9ca3af !important;
+      }
+
+      body.theme-dark .form-control,
+      body.theme-dark .form-select {
+        background-color: #1f2937;
+        color: #e5e7eb;
+        border-color: #4b5563;
+      }
+
+      body.theme-dark .form-control::placeholder {
+        color: #9ca3af;
+        opacity: 1;
+      }
+
+      body.theme-dark .form-control::file-selector-button {
+        background: #374151;
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+      }
+
+      body.theme-dark .form-control:focus,
+      body.theme-dark .form-select:focus {
+        background-color: #1f2937;
+        color: #e5e7eb;
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 0.2rem rgba(147, 197, 253, 0.25);
+      }
+
+      body.theme-dark .form-control[type="search"]::-webkit-search-cancel-button {
+        filter: invert(1);
+      }
+
+      body.theme-dark .btn.bt-dark {
+        color: #e5e7eb;
+      }
+
+      body.theme-dark .btn.bt-dark:hover {
+        background-color: #f8fafc;
+        color: #111827;
+      }
+
+      body.theme-dark .btn.btn-outline-dark {
+        border-color: #9ca3af;
+        color: #e5e7eb;
+      }
+
+      body.theme-dark .btn.btn-outline-dark:hover {
+        background-color: #f8fafc;
+        border-color: #f8fafc;
+        color: #111827;
+      }
+
+      body.theme-dark #submitBtn,
+      body.theme-dark #loginSubmitBtn {
+        background-color: #f8fafc;
+        border-color: #f8fafc;
+        color: #111827;
+      }
+
+      body.theme-dark #themeLightBtn,
+      body.theme-dark #themeDarkBtn {
+        border-color: #9ca3af;
+        color: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell container py-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="mb-3">
+        {% for category, msg in messages %}
+        <div class="alert alert-{{ category }} mb-2" role="alert">{{ msg }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    {% if active_user %}
+    <nav class="bottom-nav-wrap" aria-label="Bottom Navigation">
+      <div class="bottom-nav">
+        {% for item in nav_items %}
+        {% set is_active = request.endpoint == item.endpoint %}
+        <a
+          href="{{ url_for(item.endpoint) }}"
+          class="{{ 'active' if is_active else '' }}"
+          data-nav-link="1"
+          {% if item.endpoint == 'logout' %}data-logout-link="1"{% endif %}
+        >
+          {% if is_active %}
+          <span class="nav-bubble">{{ icon(item.icon) | safe }}</span>
+          {% else %}
+          <span class="nav-icon">{{ icon(item.icon) | safe }}</span>
+          {% endif %}
+          <span>{{ item.label }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </nav>
+
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Konfirmasi Logout</h5>
+          </div>
+          <div class="modal-body">Yakin ingin logout dari akun ini?</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+            <a href="{{ url_for('logout') }}" id="confirmLogoutBtn" class="btn btn-danger">Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <script>
+      (function () {
+        const savedTheme = localStorage.getItem("theme") || "light";
+        document.body.classList.toggle("theme-dark", savedTheme === "dark");
+      })();
+    </script>
+    <script src="{{ url_for('vendor', filename='bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+      window.setThemeMode = (mode) => {
+        const isDark = mode === "dark";
+        document.body.classList.toggle("theme-dark", isDark);
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        document.dispatchEvent(new CustomEvent("themechange", { detail: { mode: isDark ? "dark" : "light" } }));
+      };
+
+      window.addEventListener("DOMContentLoaded", () => {
+        document.body.classList.add("page-ready");
+        const logoutModalEl = document.getElementById("logoutConfirmModal");
+        const logoutModal = logoutModalEl ? new bootstrap.Modal(logoutModalEl) : null;
+        const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
+
+        document.querySelectorAll("[data-nav-link='1']").forEach((link) => {
+          link.addEventListener("click", (event) => {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+            const href = link.getAttribute("href");
+            if (!href || href.startsWith("#")) return;
+            if (link.dataset.logoutLink === "1" && logoutModal) {
+              event.preventDefault();
+              confirmLogoutBtn.setAttribute("href", href);
+              logoutModal.show();
+              return;
+            }
+            event.preventDefault();
+            document.body.classList.remove("page-ready");
+            document.body.classList.add("page-leave");
+            window.setTimeout(() => {
+              window.location.href = href;
+            }, 170);
+          });
+        });
+      });
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

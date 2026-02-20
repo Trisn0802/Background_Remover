@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="mb-3 d-flex align-items-start justify-content-between gap-2">
+  <div>
+    <h1 class="h4 mb-1">Upload Image</h1>
+    {% if active_user %}
+    <p class="text-muted mb-0">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</p>
+    {% else %}
+    <p class="text-muted mb-0">Mode tamu (anonymous): hasil langsung ter-download setelah proses.</p>
+    {% endif %}
+  </div>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Theme mode">
+    <button id="themeLightBtn" type="button" class="btn btn-outline-dark">Light</button>
+    <button id="themeDarkBtn" type="button" class="btn btn-outline-dark">Dark</button>
+  </div>
+</section>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-3 p-md-4">
+    {% if not active_user %}
+    <div class="alert alert-warning small">
+      Anda belum login. Jika ingin punya <strong>gallery sendiri</strong>, silakan <a href="{{ url_for('login') }}">login</a>.
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('process_image') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+      <div class="mb-3">
+        <label for="fileInput" class="form-label">Pilih gambar</label>
+        <input
+          class="form-control"
+          type="file"
+          id="fileInput"
+          name="file"
+          accept=".png,.jpg,.jpeg,.webp"
+          multiple
+          required
+        />
+      </div>
+
+      <div id="previewWrap" class="mb-3 d-none">
+        <div class="small text-muted mb-2">Preview sebelum remove background:</div>
+        <div id="previewGrid" class="d-flex flex-wrap gap-2"></div>
+      </div>
+
+      <div id="processState" class="mb-3 d-none">
+        <div class="small text-muted mb-1" id="processText">Memulai upload...</div>
+        <div class="progress" role="progressbar" aria-label="Progress upload" aria-valuemin="0" aria-valuemax="100">
+          <div id="processBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+        </div>
+      </div>
+
+      <button id="submitBtn" class="btn btn-dark w-100" type="submit">Remove Background</button>
+      <button type="button" class="btn btn-outline-info w-100 mt-2" data-bs-toggle="modal" data-bs-target="#aboutWebModal">Tentang Web</button>
+    </form>
+
+    <div class="mt-3 small text-muted">Format: png, jpg, jpeg, webp. Bisa upload banyak gambar sekaligus.</div>
+  </div>
+</div>
+
+<div class="modal fade" id="aboutWebModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tentang Web</h5>
+      </div>
+      <div class="modal-body small">
+        Web ini digunakan untuk upload gambar, remove background otomatis, dan menyimpan hasil ke gallery.
+        User tamu tetap bisa upload dan langsung download hasilnya.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const fileInput = document.getElementById("fileInput");
+  const uploadForm = document.getElementById("uploadForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const processState = document.getElementById("processState");
+  const processText = document.getElementById("processText");
+  const processBar = document.getElementById("processBar");
+  const previewWrap = document.getElementById("previewWrap");
+  const previewGrid = document.getElementById("previewGrid");
+
+  const themeLightBtn = document.getElementById("themeLightBtn");
+  const themeDarkBtn = document.getElementById("themeDarkBtn");
+
+  let selectedFiles = [];
+
+  function updateThemeButtons() {
+    const isDark = document.body.classList.contains("theme-dark");
+    themeDarkBtn.classList.toggle("btn-dark", isDark);
+    themeDarkBtn.classList.toggle("btn-outline-dark", !isDark);
+    themeLightBtn.classList.toggle("btn-dark", !isDark);
+    themeLightBtn.classList.toggle("btn-outline-dark", isDark);
+  }
+
+  function syncInputFiles() {
+    try {
+      const dt = new DataTransfer();
+      selectedFiles.forEach((file) => dt.items.add(file));
+      fileInput.files = dt.files;
+    } catch (err) {
+      fileInput.value = "";
+    }
+    fileInput.required = (fileInput.files?.length || 0) === 0;
+  }
+
+  function renderPreviews() {
+    previewGrid.innerHTML = "";
+    if (selectedFiles.length === 0) {
+      previewWrap.classList.add("d-none");
+      return;
+    }
+
+    previewWrap.classList.remove("d-none");
+    selectedFiles.forEach((file, index) => {
+      const card = document.createElement("div");
+      card.className = "position-relative border rounded overflow-hidden";
+      card.style.width = "10%";
+      card.style.minWidth = "70px";
+      card.style.maxWidth = "100px";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle p-0 preview-remove-btn";
+      removeBtn.style.width = "22px";
+      removeBtn.style.height = "22px";
+      removeBtn.style.transform = "translate(25%, -25%)";
+      removeBtn.textContent = "x";
+      removeBtn.addEventListener("click", () => {
+        selectedFiles.splice(index, 1);
+        syncInputFiles();
+        renderPreviews();
+      });
+
+      const img = document.createElement("img");
+      img.className = "w-100";
+      img.style.aspectRatio = "1 / 1";
+      img.style.objectFit = "cover";
+      img.alt = file.name;
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+
+      card.appendChild(removeBtn);
+      card.appendChild(img);
+      previewGrid.appendChild(card);
+    });
+  }
+
+  function setProgress(percent, text) {
+    const p = Math.max(0, Math.min(100, percent));
+    processBar.style.width = `${p}%`;
+    processBar.textContent = `${p}%`;
+    processText.textContent = text;
+  }
+
+  function setUploadUiBusy(isBusy) {
+    submitBtn.disabled = isBusy;
+    fileInput.disabled = isBusy;
+    themeLightBtn.disabled = isBusy;
+    themeDarkBtn.disabled = isBusy;
+    document.querySelectorAll(".preview-remove-btn").forEach((btn) => (btn.disabled = isBusy));
+  }
+
+  function parseFileNameFromDisposition(disposition) {
+    if (!disposition) return "hasil_removebg";
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+    const normalMatch = disposition.match(/filename="?([^";]+)"?/i);
+    return normalMatch?.[1] || "hasil_removebg";
+  }
+
+  function triggerDownload(blob, filename) {
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  fileInput.addEventListener("change", () => {
+    selectedFiles = Array.from(fileInput.files || []);
+    fileInput.required = selectedFiles.length === 0;
+    renderPreviews();
+  });
+
+  themeLightBtn.addEventListener("click", () => {
+    if (window.setThemeMode) window.setThemeMode("light");
+    updateThemeButtons();
+  });
+
+  themeDarkBtn.addEventListener("click", () => {
+    if (window.setThemeMode) window.setThemeMode("dark");
+    updateThemeButtons();
+  });
+
+  document.addEventListener("themechange", updateThemeButtons);
+
+  uploadForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const currentFileCount = fileInput.files?.length || selectedFiles.length;
+    if (currentFileCount === 0) {
+      fileInput.reportValidity();
+      return;
+    }
+
+    const formData = new FormData(uploadForm);
+    processState.classList.remove("d-none");
+    setProgress(0, `Upload 0% (${currentFileCount} file)`);
+    setUploadUiBusy(true);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", uploadForm.action, true);
+    xhr.responseType = "blob";
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setProgress(percent, `Upload ${percent}%`);
+      } else {
+        processText.textContent = "Sedang upload...";
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        setProgress(0, "Upload gagal. Coba lagi.");
+        setUploadUiBusy(false);
+        return;
+      }
+
+      const contentType = xhr.getResponseHeader("Content-Type") || "";
+      const disposition = xhr.getResponseHeader("Content-Disposition") || "";
+      const isAttachment = disposition.toLowerCase().includes("attachment");
+
+      if (isAttachment || contentType.includes("application/zip") || contentType.includes("image/png")) {
+        const filename = parseFileNameFromDisposition(disposition);
+        triggerDownload(xhr.response, filename);
+        setProgress(100, "Upload & proses selesai. Download dimulai.");
+
+        selectedFiles = [];
+        fileInput.value = "";
+        fileInput.required = true;
+        renderPreviews();
+        setUploadUiBusy(false);
+        return;
+      }
+
+      setProgress(100, "Upload selesai. Membuka gallery...");
+      const nextUrl = xhr.responseURL && xhr.responseURL.length > 0 ? xhr.responseURL : "{{ url_for('gallery_page') }}";
+      window.location.href = nextUrl;
+    };
+
+    xhr.onerror = () => {
+      setProgress(0, "Terjadi gangguan jaringan saat upload.");
+      setUploadUiBusy(false);
+    };
+
+    xhr.onloadstart = () => {
+      processBar.classList.add("progress-bar-animated");
+      processBar.classList.add("progress-bar-striped");
+    };
+
+    xhr.send(formData);
+  });
+
+  updateThemeButtons();
+</script>
+{% endblock %}

@@ -1,0 +1,567 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  .card-action-nav .page-link {
+    min-width: 40px;
+    text-align: center;
+    padding: 0.35rem 0.6rem;
+  }
+</style>
+<section class="mb-3">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <h1 class="h4 mb-1">Gallery</h1>
+      <p class="text-muted mb-0">{{ 'Semua hasil removebg (admin)' if is_admin else 'Remove background anda' }}</p>
+    </div>
+  </div>
+</section>
+
+{% if is_admin %}
+<div class="card border-1 shadow-sm mb-3">
+  <div class="card-header bg-white"><strong>Daftar User</strong></div>
+  <div class="card-body p-2">
+    <div class="row g-2 mb-2">
+      <div class="col-12 col-md-6">
+        <input type="search" id="userSearchInput" class="form-control form-control-sm" placeholder="Cari user realtime..." />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm align-middle mb-2">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Dibuat</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td><span class="badge text-bg-secondary">{{ u.role }}</span></td>
+            <td>{{ u.created_at }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-outline-primary btn-sm user-edit-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Edit">{{ icon('edit') | safe }}</button>
+                <button type="button" class="btn btn-outline-danger btn-sm user-delete-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Hapus">{{ icon('trash') | safe }}</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+<div id="userPagination" class="mt-2"></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card border-1 shadow-sm mb-3">
+  <div class="card-body p-3">
+    <div class="row g-2">
+      <div class="col-12 col-md-5">
+        <input type="search" id="searchInput" class="form-control" placeholder="Cari file / anonymous..." value="{{ q }}" />
+      </div>
+      <div class="col-12 col-md-3">
+        <input type="date" id="dateInput" class="form-control" value="{{ date_filter }}" />
+      </div>
+      {% if is_admin %}
+      <div class="col-12 col-md-4">
+        <select id="ownerInput" class="form-select">
+          <option value="" {{ '' == owner_filter and 'selected' or '' }}>Semua owner</option>
+          <option value="{{ anonymous_username }}" {{ anonymous_username == owner_filter and 'selected' or '' }}>Anonymous</option>
+        </select>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card border-1 shadow-sm mb-3">
+  <div class="card-body p-3 d-flex flex-wrap gap-2 align-items-center">
+    <button id="selectAllBtn" type="button" class="btn btn-outline-dark btn-sm">Pilih Semua</button>
+    <button id="clearSelectBtn" type="button" class="btn btn-outline-secondary btn-sm d-none">Bersihkan</button>
+    <button id="bulkDownloadBtn" type="button" class="btn btn-success btn-sm" disabled>Download Terpilih</button>
+    <button id="bulkDeleteBtn" type="button" class="btn btn-danger btn-sm" disabled>Hapus Terpilih</button>
+    <span class="small text-muted" id="selectedCount">0 dipilih</span>
+  </div>
+</div>
+
+<div id="galleryGrid" class="gallery-grid">
+  {% for img in images %}
+  <div class="card img-card border-1 shadow-sm" data-id="{{ img.id }}">
+    <div class="position-absolute p-2" style="z-index: 2;">
+      <input class="form-check-input img-selector" type="checkbox" value="{{ img.id }}" />
+    </div>
+    <img src="{{ url_for('view_image', image_id=img.id) }}" class="card-img-top" alt="{{ img.original_name }}" />
+    <div class="card-body p-2">
+      <div class="small text-truncate fw-semibold">{{ img.original_name }}</div>
+      <div class="small text-muted">{{ img.created_at }}</div>
+      {% if img.owner == anonymous_username %}
+      <div class="small text-warning d-flex align-items-center gap-1">{{ icon('anonymous') | safe }} Anonymous</div>
+      {% elif is_admin %}
+      <div class="small text-muted">User: {{ img.owner }}</div>
+      {% endif %}
+      <nav class="mt-4 mb-2" aria-label="Card action navigation">
+        <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav">
+          <li class="page-item">
+            <a class="page-link bg-primary text-white" href="{{ url_for('view_image', image_id=img.id) }}" target="_blank" title="Lihat">{{ icon('eye') | safe }}</a>
+          </li>
+          <li class="page-item">
+            <button class="page-link btn-download bg-success text-white" data-download-url="{{ url_for('download_image', image_id=img.id) }}" data-file-name="{{ img.original_name }}" type="button" title="Download">{{ icon('download') | safe }}</button>
+          </li>
+          <li class="page-item">
+            <button class="page-link btn-delete bg-danger text-white" data-delete-url="{{ url_for('delete_image', image_id=img.id) }}" data-file-name="{{ img.original_name }}" type="button" title="Hapus">{{ icon('trash') | safe }}</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div id="emptyState" class="text-center text-muted mt-4 {% if images %}d-none{% endif %}">Belum ada gambar untuk ditampilkan.</div>
+<div id="imagePagination" class="mt-3"></div>
+
+<form id="bulkDownloadForm" action="{{ url_for('bulk_download_images') }}" method="post"></form>
+<form id="bulkDeleteForm" action="{{ url_for('bulk_delete_images') }}" method="post"></form>
+
+<div class="modal fade" id="confirmDownloadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Download</h5>
+      </div>
+      <div class="modal-body">Download file <strong id="downloadFileName"></strong>?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <a id="confirmDownloadBtn" href="#" class="btn btn-success">Download</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Hapus</h5>
+      </div>
+      <div class="modal-body">Hapus file <strong id="deleteFileName"></strong>?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <form id="confirmDeleteForm" method="post">
+          <button type="submit" class="btn btn-danger">Hapus</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmBulkDownloadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Bulk Download</h5>
+      </div>
+      <div class="modal-body">Download <strong id="bulkDownloadCount">0</strong> gambar terpilih?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <button id="confirmBulkDownloadBtn" type="button" class="btn btn-success">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmBulkDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Bulk Hapus</h5>
+      </div>
+      <div class="modal-body">Hapus <strong id="bulkDeleteCount">0</strong> gambar terpilih?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <button id="confirmBulkDeleteBtn" type="button" class="btn btn-danger">Hapus</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if is_admin %}
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit User</h5>
+      </div>
+      <div class="modal-body">
+        <form id="editUserForm" class="d-grid gap-2">
+          <input type="hidden" id="editUserId" />
+          <div>
+            <label class="form-label">Username</label>
+            <input type="text" id="editUsername" class="form-control" required />
+          </div>
+          <div>
+            <label class="form-label">Password Baru (opsional)</label>
+            <input type="password" id="editPassword" class="form-control" />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <button type="button" id="saveUserBtn" class="btn btn-primary">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Hapus User</h5>
+      </div>
+      <div class="modal-body">Hapus user <strong id="deleteUserName"></strong> dan semua foto miliknya?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+        <button type="button" id="confirmDeleteUserBtn" class="btn btn-danger">Hapus User</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const searchInput = document.getElementById("searchInput");
+  const dateInput = document.getElementById("dateInput");
+  const ownerInput = document.getElementById("ownerInput");
+  const galleryGrid = document.getElementById("galleryGrid");
+  const emptyState = document.getElementById("emptyState");
+  const imagePagination = document.getElementById("imagePagination");
+
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const clearSelectBtn = document.getElementById("clearSelectBtn");
+  const bulkDownloadBtn = document.getElementById("bulkDownloadBtn");
+  const bulkDeleteBtn = document.getElementById("bulkDeleteBtn");
+  const selectedCount = document.getElementById("selectedCount");
+  const bulkDownloadForm = document.getElementById("bulkDownloadForm");
+  const bulkDeleteForm = document.getElementById("bulkDeleteForm");
+
+  const downloadModal = new bootstrap.Modal(document.getElementById("confirmDownloadModal"));
+  const deleteModal = new bootstrap.Modal(document.getElementById("confirmDeleteModal"));
+  const bulkDownloadModal = new bootstrap.Modal(document.getElementById("confirmBulkDownloadModal"));
+  const bulkDeleteModal = new bootstrap.Modal(document.getElementById("confirmBulkDeleteModal"));
+  const confirmDownloadBtn = document.getElementById("confirmDownloadBtn");
+  const confirmDeleteForm = document.getElementById("confirmDeleteForm");
+
+  const IMG_PAGE_SIZE = 10;
+  let imageCurrentPage = {{ image_current_page }};
+  let selectedIds = new Set();
+
+  function renderPagination(container, currentPage, totalPages, onPageClick) {
+    container.innerHTML = "";
+    if (totalPages <= 1) return;
+
+    const nav = document.createElement("nav");
+    nav.setAttribute("aria-label", "Page navigation");
+
+    const ul = document.createElement("ul");
+    ul.className = "pagination pagination-sm justify-content-center mb-0";
+
+    function addItem(label, targetPage, disabled, active = false) {
+      const li = document.createElement("li");
+      li.className = "page-item";
+      if (disabled) li.classList.add("disabled");
+      if (active) li.classList.add("active");
+
+      const a = document.createElement("a");
+      a.className = "page-link";
+      a.href = "#";
+      a.textContent = label;
+      a.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (!disabled && !active) onPageClick(targetPage);
+      });
+
+      li.appendChild(a);
+      ul.appendChild(li);
+    }
+
+    addItem("<<", 1, currentPage === 1);
+    addItem("Sebelumnya", currentPage - 1, currentPage === 1);
+
+    const visibleCount = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + visibleCount - 1);
+    if (endPage - startPage + 1 < visibleCount) {
+      startPage = Math.max(1, endPage - visibleCount + 1);
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+      addItem(String(p), p, false, p === currentPage);
+    }
+
+    addItem("Berikutnya", currentPage + 1, currentPage === totalPages);
+    addItem(">>", totalPages, currentPage === totalPages);
+
+    nav.appendChild(ul);
+    container.appendChild(nav);
+  }
+
+  function updateSelectedState() {
+    const count = selectedIds.size;
+    selectedCount.textContent = `${count} dipilih`;
+    bulkDownloadBtn.disabled = count === 0;
+    bulkDeleteBtn.disabled = count === 0;
+    clearSelectBtn.classList.toggle("d-none", count === 0);
+  }
+
+  function fillBulkForm(formEl) {
+    formEl.innerHTML = "";
+    selectedIds.forEach((id) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "image_ids";
+      input.value = id;
+      formEl.appendChild(input);
+    });
+  }
+
+  function cardTemplate(img) {
+    const ownerLine = img.is_anonymous
+      ? `<div class="small text-warning d-flex align-items-center gap-1">{{ icon('anonymous') | safe }} Anonymous</div>`
+      : `{% if is_admin %}<div class="small text-muted">User: ${img.owner}</div>{% endif %}`;
+    return `
+      <div class="card img-card border-1 shadow-sm" data-id="${img.id}">
+        <div class="position-absolute p-2" style="z-index: 2;">
+          <input class="form-check-input img-selector" type="checkbox" value="${img.id}" ${selectedIds.has(String(img.id)) ? "checked" : ""} />
+        </div>
+        <img src="${img.view_url}" class="card-img-top" alt="${img.original_name}" />
+        <div class="card-body p-2">
+          <div class="small text-truncate fw-semibold">${img.original_name}</div>
+          <div class="small text-muted">${img.created_at}</div>
+          ${ownerLine}
+          <nav class="mt-4 mb-2" aria-label="Card action navigation">
+            <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav">
+              <li class="page-item">
+                <a class="page-link bg-primary text-white" href="${img.view_url}" target="_blank" title="Lihat">{{ icon('eye') | safe }}</a>
+              </li>
+              <li class="page-item">
+                <button class="page-link btn-download bg-success text-white" data-download-url="${img.download_url}" data-file-name="${img.original_name}" type="button" title="Download">{{ icon('download') | safe }}</button>
+              </li>
+              <li class="page-item">
+                <button class="page-link btn-delete bg-danger text-white" data-delete-url="${img.delete_url}" data-file-name="${img.original_name}" type="button" title="Hapus">{{ icon('trash') | safe }}</button>
+              </li>
+            </ul>
+          </nav>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindImageActions() {
+    document.querySelectorAll(".btn-download").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("downloadFileName").textContent = btn.dataset.fileName;
+        confirmDownloadBtn.href = btn.dataset.downloadUrl;
+        downloadModal.show();
+      });
+    });
+    document.querySelectorAll(".btn-delete").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("deleteFileName").textContent = btn.dataset.fileName;
+        confirmDeleteForm.action = btn.dataset.deleteUrl;
+        deleteModal.show();
+      });
+    });
+    document.querySelectorAll(".img-selector").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selectedIds.add(checkbox.value);
+        else selectedIds.delete(checkbox.value);
+        updateSelectedState();
+      });
+    });
+  }
+
+  async function refreshGallery(page = imageCurrentPage) {
+    imageCurrentPage = page;
+    const params = new URLSearchParams();
+    if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
+    if (dateInput.value) params.set("date", dateInput.value);
+    if (ownerInput && ownerInput.value) params.set("owner", ownerInput.value);
+    params.set("page", String(imageCurrentPage));
+    params.set("page_size", String(IMG_PAGE_SIZE));
+
+    const response = await fetch(`/api/gallery?${params.toString()}`);
+    const payload = await response.json();
+    const data = payload.items || [];
+    const pagination = payload.pagination || { total_pages: 1, current_page: 1 };
+
+    const validIds = new Set(data.map((item) => String(item.id)));
+    selectedIds = new Set(Array.from(selectedIds).filter((id) => validIds.has(id)));
+
+    galleryGrid.innerHTML = data.map((img) => cardTemplate(img)).join("");
+    emptyState.classList.toggle("d-none", data.length > 0);
+    renderPagination(imagePagination, pagination.current_page, pagination.total_pages, (p) => refreshGallery(p));
+
+    bindImageActions();
+    updateSelectedState();
+  }
+
+  let debounceId;
+  function scheduleImageRefresh() {
+    clearTimeout(debounceId);
+    debounceId = setTimeout(() => refreshGallery(1), 250);
+  }
+
+  searchInput.addEventListener("input", scheduleImageRefresh);
+  dateInput.addEventListener("input", scheduleImageRefresh);
+  if (ownerInput) ownerInput.addEventListener("input", scheduleImageRefresh);
+
+  selectAllBtn.addEventListener("click", () => {
+    document.querySelectorAll(".img-selector").forEach((el) => {
+      el.checked = true;
+      selectedIds.add(el.value);
+    });
+    updateSelectedState();
+  });
+  clearSelectBtn.addEventListener("click", () => {
+    document.querySelectorAll(".img-selector").forEach((el) => (el.checked = false));
+    selectedIds.clear();
+    updateSelectedState();
+  });
+  bulkDownloadBtn.addEventListener("click", () => {
+    document.getElementById("bulkDownloadCount").textContent = selectedIds.size;
+    bulkDownloadModal.show();
+  });
+  bulkDeleteBtn.addEventListener("click", () => {
+    document.getElementById("bulkDeleteCount").textContent = selectedIds.size;
+    bulkDeleteModal.show();
+  });
+  document.getElementById("confirmBulkDownloadBtn").addEventListener("click", () => {
+    fillBulkForm(bulkDownloadForm);
+    bulkDownloadForm.submit();
+  });
+  document.getElementById("confirmBulkDeleteBtn").addEventListener("click", () => {
+    fillBulkForm(bulkDeleteForm);
+    bulkDeleteForm.submit();
+  });
+
+  {% if is_admin %}
+  const USER_PAGE_SIZE = 5;
+  let userCurrentPage = {{ user_current_page }};
+  const userSearchInput = document.getElementById("userSearchInput");
+  const usersTableBody = document.getElementById("usersTableBody");
+  const userPagination = document.getElementById("userPagination");
+  const editUserModal = new bootstrap.Modal(document.getElementById("editUserModal"));
+  const deleteUserModal = new bootstrap.Modal(document.getElementById("deleteUserModal"));
+  const editUserId = document.getElementById("editUserId");
+  const editUsername = document.getElementById("editUsername");
+  const editPassword = document.getElementById("editPassword");
+  const saveUserBtn = document.getElementById("saveUserBtn");
+  const deleteUserName = document.getElementById("deleteUserName");
+  const confirmDeleteUserBtn = document.getElementById("confirmDeleteUserBtn");
+  let pendingDeleteUserId = null;
+
+  function bindUserActions() {
+    document.querySelectorAll(".user-edit-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        editUserId.value = btn.dataset.userId;
+        editUsername.value = btn.dataset.username;
+        editPassword.value = "";
+        editUserModal.show();
+      });
+    });
+    document.querySelectorAll(".user-delete-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        pendingDeleteUserId = btn.dataset.userId;
+        deleteUserName.textContent = btn.dataset.username;
+        deleteUserModal.show();
+      });
+    });
+  }
+
+  function userRowTemplate(u) {
+    return `
+      <tr>
+        <td>${u.username}</td>
+        <td><span class="badge text-bg-secondary">${u.role}</span></td>
+        <td>${u.created_at}</td>
+        <td>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-outline-primary btn-sm user-edit-btn" data-user-id="${u.id}" data-username="${u.username}" title="Edit">{{ icon('edit') | safe }}</button>
+            <button type="button" class="btn btn-outline-danger btn-sm user-delete-btn" data-user-id="${u.id}" data-username="${u.username}" title="Hapus">{{ icon('trash') | safe }}</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  async function refreshUsers(page = userCurrentPage) {
+    userCurrentPage = page;
+    const params = new URLSearchParams();
+    if (userSearchInput.value.trim()) params.set("q", userSearchInput.value.trim());
+    params.set("page", String(userCurrentPage));
+    params.set("page_size", String(USER_PAGE_SIZE));
+
+    const response = await fetch(`/api/users?${params.toString()}`);
+    const payload = await response.json();
+    const users = payload.items || [];
+    const pagination = payload.pagination || { total_pages: 1, current_page: 1 };
+
+    usersTableBody.innerHTML = users.map((u) => userRowTemplate(u)).join("");
+    renderPagination(userPagination, pagination.current_page, pagination.total_pages, (p) => refreshUsers(p));
+    bindUserActions();
+  }
+
+  let userDebounceId;
+  userSearchInput.addEventListener("input", () => {
+    clearTimeout(userDebounceId);
+    userDebounceId = setTimeout(() => refreshUsers(1), 250);
+  });
+
+  saveUserBtn.addEventListener("click", async () => {
+    const id = editUserId.value;
+    const fd = new FormData();
+    fd.append("username", editUsername.value.trim());
+    fd.append("password", editPassword.value);
+    const response = await fetch(`/admin/users/${id}/update`, { method: "POST", body: fd });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Gagal update user.");
+      return;
+    }
+    editUserModal.hide();
+    refreshUsers(userCurrentPage);
+    refreshGallery(imageCurrentPage);
+  });
+
+  confirmDeleteUserBtn.addEventListener("click", async () => {
+    if (!pendingDeleteUserId) return;
+    const response = await fetch(`/admin/users/${pendingDeleteUserId}/delete`, { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || "Gagal hapus user.");
+      return;
+    }
+    deleteUserModal.hide();
+    pendingDeleteUserId = null;
+    refreshUsers(userCurrentPage);
+    refreshGallery(1);
+  });
+
+  bindUserActions();
+  renderPagination(userPagination, {{ user_current_page }}, {{ user_total_pages }}, (p) => refreshUsers(p));
+  {% endif %}
+
+  bindImageActions();
+  renderPagination(imagePagination, {{ image_current_page }}, {{ image_total_pages }}, (p) => refreshGallery(p));
+  updateSelectedState();
+</script>
+{% endblock %}
