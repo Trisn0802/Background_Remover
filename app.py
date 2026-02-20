@@ -110,7 +110,7 @@ def init_db() -> None:
     )
 
     seeds = [
-        ("admin", "zx02321011zx", "admin"),
+        ("admin", "112233", "admin"),
         ("user", "user12345", "user"),
         (ANONYMOUS_USERNAME, "anonymous-disabled-123", "user"),
     ]
