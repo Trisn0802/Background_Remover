@@ -1,5 +1,5 @@
 services:
-  happy_bank:
+  app:
     build: .
     container_name: background_remover
     ports:
