@@ -49,7 +49,8 @@
         <div class="progress" role="progressbar" aria-label="Progress upload" aria-valuemin="0" aria-valuemax="100">
           <div id="processBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
         </div>
-        <div id="extraMessage" class="text-warning small mt-2 fw-semibold"></div>
+        <div class="alert alert-warning small mt-2 d-none text-center" id="extraMessage">
+        </div>
       </div>
 
       <button id="submitBtn" class="btn btn-dark w-100" type="submit">Remove Background</button>
@@ -198,8 +199,9 @@
   function startWaitTimer() {
     clearWaitTimer(); // pastikan tidak ada timer ganda
     waitTimer = setTimeout(() => {
+      extraMessage.classList.remove("d-none");
       extraMessage.textContent = "Mohon di tunggu ya gan, spek home server gw gk bagus2 amat 🙏😂";
-    }, 30000); // 30 detik
+    }, 10000); // 10 detik
   }
 
   function parseFileNameFromDisposition(disposition) {

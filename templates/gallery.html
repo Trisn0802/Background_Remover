@@ -44,8 +44,12 @@
             <td>{{ u.created_at }}</td>
             <td>
               <div class="d-flex gap-1">
-                <button type="button" class="btn btn-outline-primary btn-sm user-edit-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Edit">{{ icon('edit') | safe }}</button>
-                <button type="button" class="btn btn-outline-danger btn-sm user-delete-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Hapus">{{ icon('trash') | safe }}</button>
+                {% if u.role == 'admin' %}
+                <button type="button" class="btn btn-primary btn-sm user-edit-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Edit">{{ icon('edit') | safe }}</button>
+                {% elif u.role == 'user' %}
+                <button type="button" class="btn btn-primary btn-sm user-edit-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Edit">{{ icon('edit') | safe }}</button>
+                <button type="button" class="btn btn-danger btn-sm user-delete-btn" data-user-id="{{ u.id }}" data-username="{{ u.username }}" title="Hapus">{{ icon('trash') | safe }}</button>
+                {% endif %}
               </div>
             </td>
           </tr>
@@ -488,6 +492,30 @@
   }
 
   function userRowTemplate(u) {
+    let roleButton;
+    if (u.role === 'admin') {
+        roleButton = `<span class="badge text-bg-secondary">Admin</span>`;
+    } else if (u.role === 'user') {
+        roleButton = `<span class="badge text-bg-secondary">User</span>`;
+    } else {
+        roleButton = '';
+    }
+
+    let editButton;
+    if (u.role === 'admin' || u.role === 'user') {
+        editButton = `<button type="button" class="btn btn-primary btn-sm user-edit-btn" data-user-id="${u.id}" data-username="${u.username }" title="Edit">{{ icon('edit') | safe }}</button>`;
+    } else {
+        editButton = '';
+    }
+
+    let deleteButton;
+    if (u.role === 'user') {
+        deleteButton = `<button type="button" class="btn btn-danger btn-sm user-delete-btn" data-user-id="${u.id}" data-username="${u.username }" title="Hapus">{{ icon('trash') | safe }}</button>`;
+    } else {
+        deleteButton = '';
+    }
+
+
     return `
       <tr>
         <td>${u.username}</td>
@@ -495,8 +523,8 @@
         <td>${u.created_at}</td>
         <td>
           <div class="d-flex gap-1">
-            <button type="button" class="btn btn-outline-primary btn-sm user-edit-btn" data-user-id="${u.id}" data-username="${u.username}" title="Edit">{{ icon('edit') | safe }}</button>
-            <button type="button" class="btn btn-outline-danger btn-sm user-delete-btn" data-user-id="${u.id}" data-username="${u.username}" title="Hapus">{{ icon('trash') | safe }}</button>
+            ${editButton}
+            ${deleteButton}
           </div>
         </td>
       </tr>

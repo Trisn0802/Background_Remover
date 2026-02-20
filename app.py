@@ -288,14 +288,14 @@ def paginate_images(
 
 def paginate_users_admin(q: str, page: int, page_size: int):
     db = get_db()
-    where_parts = ["role = 'user'", "username != ?"]
-    params: list[str | int] = [ANONYMOUS_USERNAME]
+    where_parts = ["role in ('admin', 'user')", "username != 'anonymous'"]
+    params: list[str | int] = []
 
     if q:
         where_parts.append("LOWER(username) LIKE ?")
         params.append(f"%{q}%")
 
-    where_sql = f"WHERE {' AND '.join(where_parts)}"
+    where_sql = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
     total = db.execute(f"SELECT COUNT(1) AS total FROM users {where_sql}", params).fetchone()[
         "total"
     ]
@@ -318,7 +318,6 @@ def paginate_users_admin(q: str, page: int, page_size: int):
         [*params, page_size, offset],
     ).fetchall()
     return rows, total, total_pages, current_page
-
 
 @app.route("/vendor/<path:filename>")
 def vendor(filename: str):
@@ -746,13 +745,18 @@ def admin_update_user(user_id: int):
 
     if len(username) < 3:
         return jsonify({"error": "Username minimal 3 karakter."}), 400
-    if username in ("admin", ANONYMOUS_USERNAME):
+
+    if username is not None and username == ANONYMOUS_USERNAME:
         return jsonify({"error": "Username ini tidak boleh dipakai."}), 400
 
     db = get_db()
     target = db.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,)).fetchone()
-    if not target or target["role"] != "user" or target["username"] == ANONYMOUS_USERNAME:
+
+    if not target or target["username"] == ANONYMOUS_USERNAME:
         return jsonify({"error": "User tidak valid."}), 404
+
+    # if target["role"] == 'admin' and username != target["username"]:
+    #     return jsonify({"error": "Role admin tidak dapat diubah."}), 400
 
     exists = db.execute(
         "SELECT id FROM users WHERE username = ? AND id != ?",
