@@ -49,6 +49,7 @@
         <div class="progress" role="progressbar" aria-label="Progress upload" aria-valuemin="0" aria-valuemax="100">
           <div id="processBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
         </div>
+        <div id="extraMessage" class="text-warning small mt-2 fw-semibold"></div>
       </div>
 
       <button id="submitBtn" class="btn btn-dark w-100" type="submit">Remove Background</button>
@@ -89,6 +90,7 @@
   const processState = document.getElementById("processState");
   const processText = document.getElementById("processText");
   const processBar = document.getElementById("processBar");
+  const extraMessage = document.getElementById("extraMessage");
   const previewWrap = document.getElementById("previewWrap");
   const previewGrid = document.getElementById("previewGrid");
 
@@ -96,6 +98,18 @@
   const themeDarkBtn = document.getElementById("themeDarkBtn");
 
   let selectedFiles = [];
+  let waitTimer = null; // timer untuk pesan lambat
+  let hideTimer = null; // timer untuk menyembunyikan processState
+
+  function hideProcessStateAfterDelay(delayMs = 5000) {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      processState.classList.add("d-none");
+      extraMessage.textContent = "";
+      setProgress(0, "");
+      hideTimer = null;
+    }, delayMs);
+  }
 
   function updateThemeButtons() {
     const isDark = document.body.classList.contains("theme-dark");
@@ -173,6 +187,21 @@
     document.querySelectorAll(".preview-remove-btn").forEach((btn) => (btn.disabled = isBusy));
   }
 
+  function clearWaitTimer() {
+    if (waitTimer) {
+      clearTimeout(waitTimer);
+      waitTimer = null;
+    }
+    extraMessage.textContent = ""; // hapus pesan jika timer dibatalkan
+  }
+
+  function startWaitTimer() {
+    clearWaitTimer(); // pastikan tidak ada timer ganda
+    waitTimer = setTimeout(() => {
+      extraMessage.textContent = "Mohon di tunggu ya gan, spek home server gw gk bagus2 amat 🙏😂";
+    }, 30000); // 30 detik
+  }
+
   function parseFileNameFromDisposition(disposition) {
     if (!disposition) return "hasil_removebg";
     const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
@@ -213,7 +242,14 @@
   uploadForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
-    // disable all buttons & links
+    // Batalkan timer sembunyi jika ada
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+
+
+    // disable semua tombol & link
     const buttons = document.querySelectorAll("button");
     const linkHref = document.querySelectorAll("a");
     linkHref.forEach((link) => {
@@ -236,6 +272,7 @@
 
     const formData = new FormData(uploadForm);
     processState.classList.remove("d-none");
+    extraMessage.textContent = ""; // hapus pesan sebelumnya
     setProgress(0, `Upload 0% (${currentFileCount} file)`);
     setUploadUiBusy(true);
 
@@ -243,24 +280,36 @@
     xhr.open("POST", uploadForm.action, true);
     xhr.responseType = "blob";
 
+    let uploadCompleted = false; // flag untuk tahu kapan upload selesai
+
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         const percent = Math.round((e.loaded / e.total) * 100);
         setProgress(percent, `Upload ${percent}%`);
+        if (percent === 100) {
+          uploadCompleted = true;
+          // Upload selesai, beralih ke status "Memproses"
+          setProgress(100, "Upload selesai, memproses gambar...");
+          // progress bar tetap 100% tapi kita biarkan animated
+          processBar.classList.add("progress-bar-animated");
+          // mulai timer untuk pesan lambat
+          startWaitTimer();
+        }
       } else {
         processText.textContent = "Sedang upload...";
       }
     };
 
-
     xhr.onload = () => {
-      // enable all buttons & links
+      clearWaitTimer(); // hapus timer pesan lambat
+
+      // enable semua tombol & link
       const buttons = document.querySelectorAll("button");
       const linkHref = document.querySelectorAll("a");
       linkHref.forEach((link) => {
         link.style.pointerEvents = "auto";
         link.style.textDecoration = "none";
-        disable = false;
+        link.disabled = false; // perbaiki: sebelumnya salah tulis "disable"
         link.style.opacity = "1";
       });
       buttons.forEach((button) => {
@@ -272,6 +321,7 @@
       if (xhr.status < 200 || xhr.status >= 300) {
         setProgress(0, "Upload gagal. Coba lagi.");
         setUploadUiBusy(false);
+        hideProcessStateAfterDelay(5000); // sembunyikan setelah 5 detik
         return;
       }
 
@@ -289,17 +339,32 @@
         fileInput.required = true;
         renderPreviews();
         setUploadUiBusy(false);
+
+        // Sembunyikan processState setelah 5 detik
+        hideProcessStateAfterDelay(5000);
         return;
       }
 
+      // Redirect ke gallery
       setProgress(100, "Upload selesai. Membuka gallery...");
       const nextUrl = xhr.responseURL && xhr.responseURL.length > 0 ? xhr.responseURL : "{{ url_for('gallery_page') }}";
       window.location.href = nextUrl;
     };
 
     xhr.onerror = () => {
+      clearWaitTimer();
       setProgress(0, "Terjadi gangguan jaringan saat upload.");
       setUploadUiBusy(false);
+      hideProcessStateAfterDelay(5000);
+    };
+
+    xhr.upload.onload = () => {
+      // Upload benar-benar selesai (semua data terkirim)
+      if (!uploadCompleted) {
+        setProgress(100, "Upload selesai, memproses gambar...");
+        processBar.classList.add("progress-bar-animated");
+        startWaitTimer();
+      }
     };
 
     xhr.onloadstart = () => {
@@ -307,36 +372,24 @@
       processBar.classList.add("progress-bar-striped");
     };
 
-    xhr.onreadystatechange = () => {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        setProgress(0, "Upload gagal. Coba lagi.");
-        setUploadUiBusy(false);
-        return;
+    // Jika upload.onprogress tidak pernah mencapai 100% (misal file kecil), kita tetap perlu memulai timer saat request selesai dikirim.
+    // Tapi idealnya onprogress akan tetap terpanggil. Untuk jaga-jaga, kita bisa mulai timer di onloadstart, lalu reset jika upload selesai lebih cepat.
+    // Namun karena kita ingin timer mulai setelah upload selesai, kita mulai di onprogress saat 100%. Tapi jika file sangat kecil, onprogress mungkin langsung 100% tanpa sempat kita deteksi? Sebaiknya mulai timer di sini juga setelah upload selesai.
+    // Kita modifikasi: jika upload belum mencapai 100% saat request selesai (misal file 0 byte?), kita tetap mulai timer.
+    // Solusi: setelah panggil xhr.send(), kita bisa set timer dengan delay 30 detik, tapi itu akan muncul meskipun upload lama. Tidak tepat.
+    // Lebih baik: pantau apakah upload sudah mencapai 100% di onprogress. Jika tidak, saat onloadstart kita set flag bahwa upload belum selesai, dan di onload kita batalkan timer. Tapi jika upload sangat cepat dan onprogress 100% tidak sempat, timer tidak akan pernah dimulai. Untuk amannya, kita mulai timer di onloadstart dengan catatan: jika upload sudah selesai (flag uploadCompleted true), kita batalkan dan mulai ulang? Ini rumit.
+    // Pendekatan sederhana: kita mulai timer 30 detik setelah onloadstart, dan batalkan jika response diterima. Dengan asumsi upload biasanya cepat, timer akan tetap berjalan selama proses server. Ini sudah cukup.
+    // Tapi kita ingin timer mulai SETELAH upload selesai, bukan sejak awal. Agar lebih akurat, kita bisa mendeteksi akhir upload dari xhr.upload.onload.
+    
+    xhr.upload.onload = () => {
+      // Upload benar-benar selesai (semua data terkirim)
+      if (!uploadCompleted) {
+        // Jika onprogress tidak sempat memberi 100%, kita set manually
+        setProgress(100, "Upload selesai, memproses gambar...");
+        processBar.classList.add("progress-bar-animated");
+        startWaitTimer();
       }
-
-      const contentType = xhr.getResponseHeader("Content-Type") || "";
-      const disposition = xhr.getResponseHeader("Content-Disposition") || "";
-      const isAttachment = disposition.toLowerCase().includes("attachment");
-
-      if (isAttachment || contentType.includes("application/zip") || contentType.includes("image/png")) {
-        const filename = parseFileNameFromDisposition(disposition);
-        triggerDownload(xhr.response, filename);
-        setProgress(100, "Upload & proses selesai. Download dimulai.");
-
-        selectedFiles = [];
-        fileInput.value = "";
-        fileInput.required = true;
-        renderPreviews();
-        setUploadUiBusy(false);
-        return;
-      }
-
-      setProgress(100, "Upload selesai. Membuka gallery...");
-      const nextUrl = xhr.responseURL && xhr.responseURL.length > 0 ? xhr.responseURL : "{{ url_for('gallery_page') }}";
-      window.location.href = nextUrl;
-    }
-  };
+    };
 
     xhr.send(formData);
   });
