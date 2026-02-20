@@ -512,7 +512,7 @@ def gallery_page():
         date_filter,
         owner_filter,
         page=1,
-        page_size=10,
+        page_size=8,
     )
 
     users = []
@@ -662,7 +662,7 @@ def api_gallery():
     date_filter = request.args.get("date", "").strip()
     owner_filter = request.args.get("owner", "").strip().lower()
     page = request.args.get("page", default=1, type=int)
-    page_size = request.args.get("page_size", default=10, type=int)
+    page_size = request.args.get("page_size", default=8, type=int)
     page_size = min(max(page_size, 1), 50)
 
     rows, total, total_pages, current_page = paginate_images(

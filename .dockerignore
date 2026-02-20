@@ -8,7 +8,7 @@ venv/
 .gitignore
 .qodo/
 .vscode/
-# u2net.onnx
-node_modules/
-uploads/
-database/
+#u2net.onnx
+#node_modules/
+#uploads/
+#database/
