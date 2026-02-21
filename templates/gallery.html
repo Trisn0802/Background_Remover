@@ -94,8 +94,8 @@
 
 <div class="card border-1 shadow-sm mb-3">
   <div class="card-body p-3 d-flex flex-wrap gap-2 align-items-center">
-    <button id="selectAllBtn" type="button" class="btn btn-outline-primary btn-sm">Pilih Semua</button>
-    <button id="clearSelectBtn" type="button" class="btn btn-outline-secondary btn-sm d-none">Batal</button>
+    <button id="selectAllBtn" type="button" class="btn btn-primary btn-sm"><i class="bi bi-check2-all" style="font-size: 14px;"></i></button>
+    <button id="clearSelectBtn" type="button" class="btn btn-danger btn-sm d-none"><i class="bi bi-x-lg" style="font-size: 14px;"></i></button>
     <button id="bulkDownloadBtn" type="button" class="btn btn-success btn-sm" disabled>Download Terpilih</button>
     <button id="bulkDeleteBtn" type="button" class="btn btn-danger btn-sm" disabled>Hapus Terpilih</button>
     <span class="small text-muted" id="selectedCount">0 dipilih</span>
@@ -349,9 +349,14 @@
 
   function updateSelectedState() {
     const count = selectedIds.size;
+    btnOutlinePrimary = document.querySelector("#selectAllBtn");
+    btnOutlinePrimary.innerHTML = count === 0 ? '<i class="bi bi-check2-all" style="font-size: 14px;"></i>' : '<i class="bi bi-x-lg" style="font-size: 14px;"></i>';
     selectedCount.textContent = `${count} dipilih`;
     bulkDownloadBtn.disabled = count === 0;
     bulkDeleteBtn.disabled = count === 0;
+    btnOutlinePrimary.classList.toggle("btn-primary", count === 0);
+    btnOutlinePrimary.classList.toggle("btn-danger", count > 0);
+    btnOutlinePrimary.classList.toggle("d-none", count > 0);
     clearSelectBtn.classList.toggle("d-none", count === 0);
   }
 
