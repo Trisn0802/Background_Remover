@@ -5,6 +5,13 @@ services:
     ports:
       - "5100:5100"
     volumes:
-      - ./database:/app/database
-      - ./uploads:/app/uploads
+      - .:/app          # mount seluruh kode dari host (overwrite hasil build)
+      - /app/node_modules  # kecualikan node_modules jika ada
+      - uploads_data:/app/uploads/processed
+      - db_data:/app/database
+    command: npm start
     restart: unless-stopped
+    
+volumes:
+  uploads_data:
+  db_data:
