@@ -12,7 +12,12 @@
   <div class="d-flex align-items-center justify-content-between">
     <div>
       <h1 class="h4 mb-1">Gallery</h1>
-      <p class="mb-0">{{ 'Semua hasil RemBG (admin)' if is_admin else 'Remove background anda' }}</p>
+      {% if active_user and active_user.role == 'admin' %}
+      <span class="badge rounded-pill text-bg-warning mb-0 mt-2">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</span>
+      {% elif active_user and active_user.role == 'user' %}
+      <span class="badge rounded-pill text-bg-primary mb-0 mt-2">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</span>
+      {% else %}
+      {% endif %}
     </div>
   </div>
 </section>

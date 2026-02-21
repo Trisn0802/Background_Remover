@@ -194,6 +194,7 @@
       clearTimeout(waitTimer);
       waitTimer = null;
     }
+    extraMessage.classList.add("d-none");
     extraMessage.textContent = ""; // hapus pesan jika timer dibatalkan
   }
 
@@ -343,8 +344,8 @@
         renderPreviews();
         setUploadUiBusy(false);
 
-        // Sembunyikan processState setelah 5 detik
-        hideProcessStateAfterDelay(5000);
+        // Sembunyikan processState setelah 2 detik
+        hideProcessStateAfterDelay(2000);
         return;
       }
 
@@ -358,7 +359,7 @@
       clearWaitTimer();
       setProgress(0, "Terjadi gangguan jaringan saat upload.");
       setUploadUiBusy(false);
-      hideProcessStateAfterDelay(5000);
+      hideProcessStateAfterDelay(2000);
     };
 
     xhr.upload.onload = () => {

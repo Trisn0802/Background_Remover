@@ -39,14 +39,14 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 
 ICONS = {
-    "upload": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9A5.5 5.5 0 0 1 5.5 4.5a.5.5 0 0 1 .09.992L5.5 5.5A4.5 4.5 0 0 0 1 10h2.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5v-.6Zm15 0a5.5 5.5 0 0 0-5-5.4.5.5 0 1 0-.09.992l.09.008A4.5 4.5 0 0 1 15 10h-2.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5v-.6Z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 1 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3Z"/></svg>',
-    "gallery": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M4.502 1a1.5 1.5 0 0 0-1.415 1H2a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-1.087A1.5 1.5 0 0 0 11.498 1h-6.996ZM11.498 2a.5.5 0 0 1 .471.332L12.087 3H3.913l.118-.668A.5.5 0 0 1 4.502 2h6.996Z"/><path d="M10.648 6.354a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 0 1 0 .708L10 11.414l-2.854-2.852a.5.5 0 1 1 .708-.708l2.146 2.145 2.146-2.145a.5.5 0 0 1 .708 0Z"/></svg>',
-    "logout": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 15a1 1 0 0 0 1-1v-2a.5.5 0 0 1 1 0v2a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v2a.5.5 0 0 1-1 0V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h7Z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L14.293 7.5H6.5a.5.5 0 0 0 0 1h7.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3Z"/></svg>',
-    "eye": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8Zm-8 4.5A4.5 4.5 0 1 1 8 3a4.5 4.5 0 0 1 0 9.5Z"/><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>',
-    "trash": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5.5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Zm2 .5a.5.5 0 0 1 1 0v6a.5.5 0 0 1-1 0V6Z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1h2.5a1 1 0 0 1 1 1ZM6 2a.5.5 0 0 0-.5.5h5A.5.5 0 0 0 10 2H6Zm-2 2v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4H4Z"/></svg>',
-    "download": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9A.5.5 0 0 1 1 9.4h14a.5.5 0 0 1 .5.5v3.6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V9.9Zm1 .5v3.1a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-3.1H1.5Z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l2.5 2.5a.5.5 0 0 1-.708.708L8.5 2.707V10.5a.5.5 0 0 1-1 0V2.707L5.854 4.354a.5.5 0 1 1-.708-.708l2.5-2.5Z"/></svg>',
-    "anonymous": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M14 14s-1-4-6-4-6 4-6 4 1 1 6 1 6-1 6-1Z"/></svg>',
-    "edit": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10L3 14l.146-2.854 10-10ZM11.207 2 4 9.207V12h2.793L14 4.793 11.207 2Z"/></svg>',
+    "upload": '<i class="bi bi-cloud-upload-fill" style="font-size: 24px;"></i>',
+    "gallery": '<i class="bi bi-images" style="font-size: 24px;"></i>',
+    "logout": '<i class="bi bi-box-arrow-right" style="font-size: 24px;"></i>',
+    "eye": '<i class="bi bi-eye-fill" style="font-size: 14px;"></i>',
+    "trash": '<i class="bi bi-trash-fill" style="font-size: 14px;"></i>',
+    "download": '<i class="bi bi-download" style="font-size: 14px;"></i>',
+    "anonymous": '<i class="bi bi-question-circle-fill" style="font-size: 14px;"></i>',
+    "edit": '<i class="bi bi-pencil-square" style="font-size: 14px;"></i>',
 }
 
 
