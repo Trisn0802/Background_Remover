@@ -9,7 +9,7 @@ services:
       - /app/node_modules  # kecualikan node_modules jika ada
       - uploads_data:/app/uploads/processed
       - db_data:/app/database
-    command: npm start
+    command: npm install
     restart: unless-stopped
     
 volumes:
