@@ -19,6 +19,10 @@
       {% else %}
       {% endif %}
     </div>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Theme mode">
+      <button id="themeLightBtn" type="button" class="btn btn-outline-dark"><i class="bi bi-brightness-high-fill" style="font-size: 18px;"></i></button>
+      <button id="themeDarkBtn" type="button" class="btn btn-outline-dark"><i class="bi bi-moon-stars-fill" style="font-size: 18px;"></i></button>
+    </div>
   </div>
 </section>
 
@@ -100,7 +104,7 @@
 
 <div id="galleryGrid" class="gallery-grid">
   {% for img in images %}
-  <div class="card img-card border-1 shadow-sm" data-id="{{ img.id }}">
+  <div class="card card-dark-theme img-card border-1 shadow-sm" data-id="{{ img.id }}">
     <div class="position-absolute p-2" style="z-index: 2;">
       <input class="form-check-input img-selector" type="checkbox" value="{{ img.id }}" />
     </div>
@@ -113,8 +117,9 @@
       {% elif is_admin %}
       <div class="small text-muted">User: {{ img.owner }}</div>
       {% endif %}
-      <nav class="mt-4 mb-2" aria-label="Card action navigation">
-        <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav">
+      <nav class="mt-2 mb-2" aria-label="Card action navigation">
+        <hr>
+        <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav list-group-horizontal">
           <li class="page-item">
             <a class="page-link bg-primary text-white" href="{{ url_for('view_image', image_id=img.id) }}" target="_blank" title="Lihat">{{ icon('eye') | safe }}</a>
           </li>
@@ -272,6 +277,26 @@
   let imageCurrentPage = {{ image_current_page }};
   let selectedIds = new Set();
 
+  function updateThemeButtons() {
+    const isDark = document.body.classList.contains("theme-dark");
+    themeDarkBtn.classList.toggle("btn-outline-white", isDark);
+    themeDarkBtn.classList.toggle("btn-white", !isDark);
+    themeLightBtn.classList.toggle("btn-dark", !isDark);
+    themeLightBtn.classList.toggle("btn-outline-dark", isDark);
+  }
+
+  themeLightBtn.addEventListener("click", () => {
+    if (window.setThemeMode) window.setThemeMode("light");
+    updateThemeButtons();
+  });
+
+  themeDarkBtn.addEventListener("click", () => {
+    if (window.setThemeMode) window.setThemeMode("dark");
+    updateThemeButtons();
+  });
+
+  document.addEventListener("themechange", updateThemeButtons);
+
   function renderPagination(container, currentPage, totalPages, onPageClick) {
     container.innerHTML = "";
     if (totalPages <= 1) return;
@@ -346,7 +371,7 @@
       ? `<div class="small text-warning d-flex align-items-center gap-1">{{ icon('anonymous') | safe }} Anonymous</div>`
       : `{% if is_admin %}<div class="small text-muted">User: ${img.owner}</div>{% endif %}`;
     return `
-      <div class="card img-card border-1 shadow-sm" data-id="${img.id}">
+      <div class="card card-dark-theme img-card border-1 shadow-sm" data-id="${img.id}">
         <div class="position-absolute p-2" style="z-index: 2;">
           <input class="form-check-input img-selector" type="checkbox" value="${img.id}" ${selectedIds.has(String(img.id)) ? "checked" : ""} />
         </div>
@@ -355,8 +380,9 @@
           <div class="small text-truncate fw-semibold">${img.original_name}</div>
           <div class="small text-muted">${img.created_at}</div>
           ${ownerLine}
-          <nav class="mt-4 mb-2" aria-label="Card action navigation">
-            <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav">
+          <nav class="mt-2 mb-2" aria-label="Card action navigation">
+          <hr>
+            <ul class="pagination pagination-sm justify-content-center mb-0 card-action-nav list-group-horizontal">
               <li class="page-item">
                 <a class="page-link bg-primary text-white" href="${img.view_url}" target="_blank" title="Lihat">{{ icon('eye') | safe }}</a>
               </li>
@@ -596,5 +622,7 @@
   bindImageActions();
   renderPagination(imagePagination, {{ image_current_page }}, {{ image_total_pages }}, (p) => refreshGallery(p));
   updateSelectedState();
+
+  updateThemeButtons();
 </script>
 {% endblock %}

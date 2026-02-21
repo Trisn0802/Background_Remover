@@ -144,10 +144,21 @@
         object-fit: cover;
       }
 
-      body.theme-dark .card,
       body.theme-dark .modal-content,
       body.theme-dark .table {
         background-color: #000000;
+        border-color: #374151;
+        color: #e5e7eb;
+      }
+
+      body.theme-dark .card {
+        background-color: #000000;
+        border-color: #374151;
+        color: #e5e7eb;
+      }
+
+      body.theme-dark .card.card-dark-theme {
+        background-color: #1f2937;
         border-color: #374151;
         color: #e5e7eb;
       }
@@ -172,8 +183,13 @@
         color: #9ca3af !important;
       }
 
-      body.theme-dark .form-control,
       body.theme-dark .form-select {
+        background-color: #1f2937;
+        color: #e5e7eb;
+        border-color: #4b5563;
+      }
+
+      body.theme-dark .form-control {
         background-color: #1f2937;
         color: #e5e7eb;
         border-color: #4b5563;
@@ -184,11 +200,7 @@
         opacity: 1;
       }
 
-      body.theme-dark .form-control::file-selector-button {
-        background: #374151;
-        color: #e5e7eb;
-        border: 1px solid #4b5563;
-      }
+      
 
       body.theme-dark .form-control:focus,
       body.theme-dark .form-select:focus {
