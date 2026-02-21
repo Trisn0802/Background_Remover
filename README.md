@@ -23,15 +23,21 @@ create file `docker-compose.yml` as follows:
 
 ```yaml
 services:
-  happy_bank:
+  app:
     build: .
     container_name: background_remover
     ports:
       - "5100:5100"
     volumes:
-      - ./database:/app/database
-      - ./uploads:/app/uploads
+      - .:/app          # mount seluruh kode dari host (overwrite hasil build)
+      - /app/node_modules  # kecualikan node_modules jika ada
+      - uploads_data:/app/uploads/processed
+      - db_data:/app/database
     restart: unless-stopped
+    
+volumes:
+  uploads_data:
+  db_data:
 ```
 
 After that run this command:
