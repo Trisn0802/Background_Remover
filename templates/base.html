@@ -8,6 +8,10 @@
       rel="stylesheet"
       href="{{ url_for('vendor', filename='bootstrap/dist/css/bootstrap.min.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('vendor', filename='bootstrap-icons/font/bootstrap-icons.min.css') }}"
+    />
 
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}?v=3">
 
@@ -19,17 +23,17 @@
         --app-text: #1f2937;
         --nav-bg: #ffffff;
         --nav-muted: #8a8f9c;
-        --nav-active: #111827;
+        --nav-active: #000000;
         --nav-bubble-fg: #ffffff;
       }
 
       body.theme-dark {
         --app-bg: #0f172a;
         --app-text: #e5e7eb;
-        --nav-bg: #111827;
+        --nav-bg: #000000;
         --nav-muted: #9ca3af;
         --nav-active: #f8fafc;
-        --nav-bubble-fg: #111827;
+        --nav-bubble-fg: #000000;
       }
 
       body {
@@ -142,22 +146,24 @@
 
       body.theme-dark .card,
       body.theme-dark .modal-content,
-      body.theme-dark .table,
-      body.theme-dark .alert {
-        background-color: #111827;
-        color: #e5e7eb;
+      body.theme-dark .table {
+        background-color: #000000;
         border-color: #374151;
+        color: #e5e7eb;
+      }
+
+      body.theme-dark .alert {
       }
 
       body.theme-dark .table {
-        --bs-table-bg: #111827;
+        --bs-table-bg: #1f2937;
         --bs-table-color: #e5e7eb;
         --bs-table-border-color: #374151;
       }
 
       body.theme-dark .card-header.bg-white,
       body.theme-dark .card-header {
-        background-color: #0f172a !important;
+        background-color: #1f2937 !important;
         color: #e5e7eb !important;
         border-color: #374151 !important;
       }
@@ -192,17 +198,36 @@
         box-shadow: 0 0 0 0.2rem rgba(147, 197, 253, 0.25);
       }
 
+      body.theme-dark .form-control:hover,
+      body.theme-dark .form-select:hover {
+        background-color: #1f2937;
+        color: #e5e7eb;
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 0.2rem rgba(147, 197, 253, 0.25);
+      }
+
       body.theme-dark .form-control[type="search"]::-webkit-search-cancel-button {
         filter: invert(1);
       }
 
       body.theme-dark .btn.bt-dark {
-        color: #e5e7eb;
+        background-color: #f8fafc;
+        color: #000000;
       }
 
       body.theme-dark .btn.bt-dark:hover {
+        background-color: #000000;
+        color: #f8fafc;
+      }
+
+      body.theme-dark .btn.btn-dark-modal {
         background-color: #f8fafc;
-        color: #111827;
+        color: #000000;
+      }
+
+      body.theme-dark .btn.btn-dark-modal:hover {
+        background-color: #1f2937;
+        color: #f8fafc;
       }
 
       body.theme-dark .btn.btn-outline-dark {
@@ -213,20 +238,24 @@
       body.theme-dark .btn.btn-outline-dark:hover {
         background-color: #f8fafc;
         border-color: #f8fafc;
-        color: #111827;
+        color: #000000;
       }
 
       body.theme-dark #submitBtn,
       body.theme-dark #loginSubmitBtn {
         background-color: #f8fafc;
-        border-color: #f8fafc;
-        color: #111827;
+        border-color: #93c5fd;
+        color: #000000;
       }
 
-      body.theme-dark #themeLightBtn,
+      body.theme-dark #themeLightBtn{
+        border-color: #9ca3af;
+      }
+
       body.theme-dark #themeDarkBtn {
         border-color: #9ca3af;
-        color: #e5e7eb;
+        background-color: #f8fafc;
+        color: #000000;
       }
     </style>
   </head>

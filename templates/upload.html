@@ -12,8 +12,8 @@
     {% endif %}
   </div>
   <div class="btn-group btn-group-sm" role="group" aria-label="Theme mode">
-    <button id="themeLightBtn" type="button" class="btn btn-outline-dark">Light</button>
-    <button id="themeDarkBtn" type="button" class="btn btn-outline-dark">Dark</button>
+    <button id="themeLightBtn" type="button" class="btn btn-outline-dark"><i class="bi bi-brightness-high-fill"></i></button>
+    <button id="themeDarkBtn" type="button" class="btn btn-outline-dark"><i class="bi bi-moon-stars-fill"></i></button>
   </div>
 </section>
 
@@ -76,7 +76,7 @@
         link portofolio: <a href="https://trisna-info.pages.dev" target="_blank" rel="noopener">https://trisna-info.pages.dev</a>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-dark btn-dark-modal" data-bs-dismiss="modal">Tutup</button>
       </div>
     </div>
   </div>
@@ -115,7 +115,7 @@
   function updateThemeButtons() {
     const isDark = document.body.classList.contains("theme-dark");
     themeDarkBtn.classList.toggle("btn-dark", isDark);
-    themeDarkBtn.classList.toggle("btn-outline-dark", !isDark);
+    themeDarkBtn.classList.toggle("btn-white", !isDark);
     themeLightBtn.classList.toggle("btn-dark", !isDark);
     themeLightBtn.classList.toggle("btn-outline-dark", isDark);
   }
