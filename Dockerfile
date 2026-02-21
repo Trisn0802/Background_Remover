@@ -24,4 +24,4 @@ RUN mkdir -p /root/.u2net && \
 EXPOSE 5100
 
 # 6. Jalankan aplikasi
-CMD ["npm", "install"] && ["python", "app.py"]
+CMD ["python", "app.py"]
