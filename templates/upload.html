@@ -5,10 +5,11 @@
   <div>
     <h1 class="h4 mb-1">Upload Image</h1>
     <div class="d-flex align-items-center">Max file size:<p class="mb-0 scale-up-center-alternate"> Unlimited ♾️</p></div>
-    {% if active_user %}
-    <p class="text-muted mb-0">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</p>
+    {% if active_user and active_user.role == 'admin' %}
+    <span class="badge rounded-pill text-bg-warning mb-0 mt-2">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</span>
+    {% elif active_user and active_user.role == 'user' %}
+    <span class="badge rounded-pill text-bg-primary mb-0 mt-2">{{ 'Admin' if active_user.role == 'admin' else 'User' }}: {{ active_user.username }}</span>
     {% else %}
-    <p class="text-muted mb-0"></p>
     {% endif %}
   </div>
   <div class="btn-group btn-group-sm" role="group" aria-label="Theme mode">
