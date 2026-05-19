@@ -984,7 +984,19 @@ def process_money():
         # 2. CHECK ROBOFLOW CLIENT
         # ====================================================================
         if not roboflow_client:
-            print("[WARNING] Roboflow client not available, using fallback response")
+            # Cari bagian inisialisasi Roboflow dan ubah menjadi:
+            try:
+                roboflow_client = InferenceHTTPClient(
+                    api_url=ROBOFLOW_API_URL,
+                    api_key=ROBOFLOW_API_KEY,
+                )
+                print("[INFO] Roboflow client initialized successfully")
+            except Exception as e:
+                # UBAH INI: Print error asli dan gunakan flush=True agar langsung muncul di log
+                print(f"[ERROR] !!! Gagal Inisialisasi Roboflow !!!", flush=True)
+                print(f"[ERROR] Tipe Error: {type(e).__name__}", flush=True)
+                print(f"[ERROR] Detail Error: {str(e)}", flush=True)
+                roboflow_client = None
             # Fallback response untuk testing tanpa API key valid
             return jsonify({
                 "success": True,
