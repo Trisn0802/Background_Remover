@@ -8,11 +8,11 @@ sudo mkdir -p /var/www/docker/app
 cd /var/www/docker/app
 
 # 2. Download script
-curl -O https://raw.githubusercontent.com/YOUR_USERNAME/Background_Remover/main/update_and_run.sh
+curl -O https://raw.githubusercontent.com/Trisn0802/Background_Remover/main/update_and_run.sh
 chmod +x update_and_run.sh
 
-# 3. Edit script - ubah REPO_URL
-nano update_and_run.sh
+# 3. Script sudah dikonfigurasi dengan URL yang benar!
+# REPO_URL="https://github.com/Trisn0802/Background_Remover.git"
 
 # 4. Run script (ini akan git clone otomatis!)
 ./update_and_run.sh

@@ -51,35 +51,23 @@ chmod 755 /var/www/docker/app
 ### Step 2: Download Script
 ```bash
 # Download update_and_run.sh
-curl -O https://raw.githubusercontent.com/YOUR_USERNAME/Background_Remover/main/update_and_run.sh
+curl -O https://raw.githubusercontent.com/Trisn0802/Background_Remover/main/update_and_run.sh
 
 # Atau jika sudah ada:
-wget https://raw.githubusercontent.com/YOUR_USERNAME/Background_Remover/main/update_and_run.sh
+wget https://raw.githubusercontent.com/Trisn0802/Background_Remover/main/update_and_run.sh
 
 # Make executable
 chmod +x update_and_run.sh
 ```
 
-### Step 3: EDIT SCRIPT (PENTING!)
+### Step 3: Script SUDAH Dikonfigurasi ✅
 
-**HARUS EDIT 2 BAGIAN:**
-
+GitHub URL sudah otomatis di-set di script:
 ```bash
-# Edit script
-nano update_and_run.sh
+REPO_URL="https://github.com/Trisn0802/Background_Remover.git"
 ```
 
-Cari dan ubah:
-```bash
-# Baris 13 - Ganti YOUR_USERNAME dengan GitHub username Anda
-REPO_URL="https://github.com/YOUR_USERNAME/Background_Remover.git"
-```
-
-Jika repo private, gunakan:
-```bash
-# Gunakan SSH (pastikan SSH key sudah tersetup di GitHub)
-REPO_URL="git@github.com:YOUR_USERNAME/Background_Remover.git"
-```
+Tidak perlu edit lagi! Langsung jalankan saja. 🎉
 
 ### Step 4: Jalankan Script
 ```bash
