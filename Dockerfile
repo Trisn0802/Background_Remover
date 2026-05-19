@@ -1,6 +1,4 @@
 FROM python:3.11-slim
-# Tambahkan ini di baris pertama Dockerfile
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 WORKDIR /app
 
