@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 1. Instal OS-level dependencies untuk OpenCV dan image processing
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
