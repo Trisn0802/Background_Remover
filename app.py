@@ -959,6 +959,9 @@ def process_money():
             "message": "Terdeteksi: Dua Puluh Ribu Rupiah"
         }
     """
+    
+    global roboflow_client  # <--- TAMBAHKAN BARIS INI KANAN DI SINI
+    
     try:
         # ====================================================================
         # 1. EXTRACT & VALIDATE REQUEST DATA
