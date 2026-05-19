@@ -1,0 +1,11 @@
+.qodo/
+.vscode/
+__pycache__/
+u2net.onnx
+node_modules/
+dist
+uploads/
+database/
+backup/
+.env
+*.pyc

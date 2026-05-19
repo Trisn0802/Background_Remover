@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    container_name: background_remover
+    ports:
+      - "5100:5100"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - uploads_data:/app/uploads/processed
+      - db_data:/app/database
+    restart: unless-stopped
+    environment:
+      - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
+      - ROBOFLOW_WORKSPACE=${ROBOFLOW_WORKSPACE}
+      - ROBOFLOW_WORKFLOW_ID=${ROBOFLOW_WORKFLOW_ID}
+      - ROBOFLOW_WORKFLOW_CLASSES=${ROBOFLOW_WORKFLOW_CLASSES}
+      - ROBOFLOW_MODEL_ID=${ROBOFLOW_MODEL_ID}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-change-me}
+      - FLASK_ENV=development
+
+volumes:
+  uploads_data:
+  db_data:

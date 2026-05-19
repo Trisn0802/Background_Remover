@@ -1,0 +1,11 @@
+rembg
+onnxruntime
+Flask
+Pillow
+Werkzeug
+inference-sdk
+python-dotenv
+requests
+ultralytics
+numpy
+opencv-python

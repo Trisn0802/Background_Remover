@@ -1,0 +1,942 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .money-detector-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+
+    .detector-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .detector-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: #2c3e50;
+    }
+
+    .detector-header p {
+        font-size: 1rem;
+        color: #7f8c8d;
+    }
+
+    body.theme-dark .detector-header h1 {
+        color: #e5e7eb;
+    }
+
+    body.theme-dark .detector-header p {
+        color: #9ca3af;
+    }
+
+    .video-section {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .video-wrapper {
+        position: relative;
+        background: #000;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    #moneyVideo {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 10px;
+    }
+
+    .video-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-control {
+        padding: 10px 20px;
+        font-size: 1rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-start {
+        background-color: #27ae60;
+        color: white;
+    }
+
+    .btn-start:hover:not(:disabled) {
+        background-color: #229954;
+    }
+
+    .btn-stop {
+        background-color: #e74c3c;
+        color: white;
+    }
+
+    .btn-stop:hover:not(:disabled) {
+        background-color: #c0392b;
+    }
+
+    .btn-save {
+        background-color: #2980b9;
+        color: white;
+    }
+
+    .btn-save:hover:not(:disabled) {
+        background-color: #2471a3;
+    }
+
+    .btn-control:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .detection-result {
+        background: #ecf0f1;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    body.theme-dark .detection-result {
+        background: #1f2937;
+        color: #e5e7eb;
+    }
+
+    .detector-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .detector-left,
+    .detector-right {
+        min-width: 0;
+    }
+
+    @media (min-width: 992px) {
+        .money-detector-container {
+            max-width: 1100px;
+        }
+
+        .detector-grid {
+            grid-template-columns: 1.4fr 0.9fr;
+            align-items: start;
+            gap: 22px;
+        }
+
+        .video-section {
+            margin-bottom: 0;
+        }
+
+        .upload-card {
+            margin-bottom: 16px;
+        }
+
+        .detection-result {
+            margin-top: 0;
+        }
+    }
+
+    .result-status {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    body.theme-dark .result-status {
+        color: #e5e7eb;
+    }
+
+    .result-money {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #27ae60;
+        margin-bottom: 5px;
+    }
+
+    .result-confidence {
+        font-size: 0.9rem;
+        color: #7f8c8d;
+    }
+
+    body.theme-dark .result-confidence {
+        color: #9ca3af;
+    }
+
+    .detection-info {
+        background: #fff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: #2c3e50;
+    }
+
+    body.theme-dark .detection-info {
+        background: #0f172a;
+        color: #e5e7eb;
+    }
+
+    .status-box {
+        background: #fff;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+
+    body.theme-dark .status-box {
+        background: #1f2937;
+        color: #e5e7eb;
+    }
+
+    .status-box.active {
+        border-left-color: #27ae60;
+        background: #f0fdf4;
+    }
+
+    body.theme-dark .status-box.active {
+        background: #064e3b;
+    }
+
+    .status-box.error {
+        border-left-color: #e74c3c;
+        background: #fef2f2;
+    }
+
+    body.theme-dark .status-box.error {
+        background: #7f1d1d;
+    }
+
+    .accessibility-info {
+        background: #e8f4f8;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+        font-size: 0.9rem;
+        color: #2c3e50;
+    }
+
+    body.theme-dark .accessibility-info {
+        background: #082f49;
+        color: #e5e7eb;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .spinner {
+        border: 3px solid #ecf0f1;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .hidden-canvas {
+        display: none;
+    }
+
+    .upload-card {
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 18px;
+    }
+
+    body.theme-dark .upload-card {
+        background: #0b1220;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+</style>
+
+<div class="money-detector-container">
+    <!-- Header -->
+    <div class="detector-header">
+        <h1>🪙 Deteksi Uang Rupiah</h1>
+        <p>Aplikasi Real-Time untuk mendeteksi nominal uang Rupiah menggunakan webcam</p>
+        <p style="color: #c0392b; font-weight: bold; margin-top: 10px;">
+            ⚠️ Fitur untuk membantu pengguna tunanetra mengidentifikasi uang
+        </p>
+    </div>
+
+    <!-- Status Box -->
+    <div class="status-box" id="statusBox">
+        <strong>Status:</strong> <span id="statusText">Siap digunakan</span>
+    </div>
+
+    <div class="detector-grid">
+        <div class="detector-left">
+            <!-- Video Section -->
+            <div class="video-section">
+                <div class="video-wrapper">
+                    <video id="moneyVideo" autoplay playsinline></video>
+                </div>
+
+                <div class="video-controls">
+                    <button class="btn-control btn-start" id="btnStart" onclick="startDetection()">
+                        ▶️ Mulai Deteksi
+                    </button>
+                    <button class="btn-control btn-stop d-none" id="btnStop" onclick="stopDetection()" disabled>
+                        ⏹️ Henti Deteksi
+                    </button>
+                    <button class="btn-control btn-save" id="btnSaveSnapshot" onclick="saveCurrentFrameToGallery()" disabled>
+                        💾 Simpan Snapshot
+                    </button>
+                </div>
+
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px; color: #3498db; font-weight: bold;">Memproses...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="detector-right">
+            <!-- Detection Result -->
+            <div class="detection-result" id="detectionResult">
+                <div class="result-status">Hasil Deteksi</div>
+                <div style="font-size: 0.95rem;">
+                    Tekan tombol "Mulai Deteksi" untuk memulai
+                </div>
+            </div>
+
+            <!-- Upload Image -->
+            <div class="upload-card">
+                <div class="fw-semibold mb-1">Upload Foto untuk Cek Rupiah</div>
+                <div class="small text-muted mb-2">Pilih gambar uang rupiah, lalu cek dan simpan hasilnya ke Gallery.</div>
+                <div class="d-flex flex-column gap-2">
+                    <input id="moneyFileInput" type="file" class="form-control w-100" accept=".jpg,.jpeg,.png,.webp" multiple />
+                    <div id="moneyPreviewWrap" class="d-none">
+                        <div class="small text-muted mb-2">Preview sebelum cek rupiah:</div>
+                        <div id="moneyPreviewGrid" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button class="btn-control btn-save" id="btnUploadCheck" onclick="processSelectedMoneyUploadsToGallery()">
+                            📤 Cek Sekarang
+                        </button>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">
+                    Catatan: Gallery hanya bisa dilihat setelah login.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Info -->
+    <div class="accessibility-info">
+        <strong>📢 Aksesibilitas:</strong>
+        <p style="margin: 8px 0 0 0;">
+            Aplikasi ini menggunakan Text-to-Speech untuk membaca nominal uang yang terdeteksi.
+            Suara akan berbunyi otomatis ketika uang terdeteksi dan akan diperbarui setiap 1.5 - 3 detik (otomatis).
+            Gunakan speaker atau headphone untuk mendengarkan hasil deteksi.
+        </p>
+    </div>
+</div>
+
+<!-- Hidden Canvas untuk capture video frame -->
+<canvas id="hiddenCanvas" class="hidden-canvas" width="640" height="480"></canvas>
+
+<script>
+// ============================================================================
+// GLOBAL VARIABLES & CONFIGURATION
+// ============================================================================
+
+let videoStream = null;
+let detectionInterval = null;
+let isDetecting = false;
+let lastDetectedMoney = null;
+let lastSpeechTime = 0;
+const SPEECH_DEBOUNCE_MS = 1500;
+const CAPTURE_INTERVAL_DEFAULT_MS = 1500;
+const CAPTURE_INTERVAL_SAME_MONEY_MS = 3000;
+let currentCaptureIntervalMs = CAPTURE_INTERVAL_DEFAULT_MS;
+let lastInputPreviewBase64 = "";
+
+let moneySelectedFiles = [];
+let moneySpeakQueue = [];
+let moneySpeaking = false;
+
+function enqueueMoneySpeech(message) {
+    if (!message) return;
+    moneySpeakQueue.push(message);
+    if (!moneySpeaking) speakNextMoneyQueue();
+}
+
+function speakNextMoneyQueue() {
+    const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance ||
+                                     window.webkitSpeechSynthesisUtterance;
+    if (!SpeechSynthesisUtterance) {
+        moneySpeakQueue = [];
+        moneySpeaking = false;
+        return;
+    }
+
+    const next = moneySpeakQueue.shift();
+    if (!next) {
+        moneySpeaking = false;
+        return;
+    }
+
+    try {
+        moneySpeaking = true;
+        const utterance = new SpeechSynthesisUtterance(next);
+        utterance.lang = "id-ID";
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.onend = () => speakNextMoneyQueue();
+        utterance.onerror = () => speakNextMoneyQueue();
+        window.speechSynthesis.speak(utterance);
+    } catch (e) {
+        moneySpeaking = false;
+    }
+}
+
+/**
+ * Fungsi untuk mendapatkan akses ke webcam
+ */
+async function initCamera() {
+    try {
+        // Check browser support untuk mediaDevices
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error(
+                "Browser Anda tidak mendukung akses webcam. \n" +
+                "Gunakan Chrome, Firefox, Edge, atau Safari terbaru.\n" +
+                "Akses HARUS melalui HTTPS atau localhost."
+            );
+        }
+
+        const video = document.getElementById("moneyVideo");
+        const constraints = {
+            video: {
+                facingMode: "environment",
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        };
+
+        console.log("[INFO] Requesting camera access...");
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = videoStream;
+
+        // Tunggu video track dimulai
+        video.onloadedmetadata = function() {
+            console.log("[INFO] Video metadata loaded");
+            const saveBtn = document.getElementById("btnSaveSnapshot");
+            if (saveBtn) saveBtn.disabled = false;
+        };
+
+        updateStatus("Kamera siap", "active");
+        console.log("[INFO] Camera initialized successfully");
+    } catch (error) {
+        console.error("[ERROR] Camera access error:", error);
+        const errorMsg = error.name === "NotAllowedError" 
+            ? "Akses webcam ditolak. Silakan berikan izin di pengaturan browser."
+            : error.name === "NotFoundError"
+            ? "Tidak ada webcam terdeteksi di perangkat Anda."
+            : error.message;
+        
+        updateStatus("Error: " + errorMsg, "error");
+        displayError("❌ Error Kamera: " + errorMsg);
+    }
+}
+
+/**
+ * Fungsi untuk update status display
+ */
+function updateStatus(message, type = "info") {
+    const statusBox = document.getElementById("statusBox");
+    const statusText = document.getElementById("statusText");
+
+    statusText.textContent = message;
+    statusBox.className = "status-box " + type;
+}
+
+/**
+ * Mulai deteksi real-time
+ */
+function startDetection() {
+    if (!videoStream) {
+        updateStatus("Kamera belum diinisialisasi", "error");
+        return;
+    }
+
+    isDetecting = true;
+    lastDetectedMoney = null;
+    lastSpeechTime = 0;
+
+    const startBtn = document.getElementById("btnStart");
+    const stopBtn = document.getElementById("btnStop");
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.classList.add("d-none");
+    }
+    if (stopBtn) {
+        stopBtn.disabled = false;
+        stopBtn.classList.remove("d-none");
+    }
+
+    setDetectionInterval(CAPTURE_INTERVAL_DEFAULT_MS, true);
+    updateStatus(`Deteksi aktif - menangkap frame setiap ${currentCaptureIntervalMs / 1000} detik`, "active");
+
+    captureAndProcess();
+}
+
+function setDetectionInterval(intervalMs, forceRestart = false) {
+    const next = Math.max(500, Number(intervalMs) || CAPTURE_INTERVAL_DEFAULT_MS);
+    if (!forceRestart && next === currentCaptureIntervalMs) return;
+    currentCaptureIntervalMs = next;
+
+    if (!isDetecting) return;
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    detectionInterval = setInterval(captureAndProcess, currentCaptureIntervalMs);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("moneyFileInput");
+    if (input) {
+        input.addEventListener("change", () => {
+            moneySelectedFiles = Array.from(input.files || []);
+            renderMoneyPreviews();
+        });
+    }
+});
+
+/**
+ * Henti deteksi
+ */
+function stopDetection() {
+    isDetecting = false;
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    currentCaptureIntervalMs = CAPTURE_INTERVAL_DEFAULT_MS;
+
+    const startBtn = document.getElementById("btnStart");
+    const stopBtn = document.getElementById("btnStop");
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.classList.remove("d-none");
+    }
+    if (stopBtn) {
+        stopBtn.disabled = true;
+        stopBtn.classList.add("d-none");
+    }
+    updateStatus("Deteksi dihentikan", "info");
+}
+
+/**
+ * Capture frame dari video dan convert ke base64
+ */
+function captureFrameAsBase64() {
+    const video = document.getElementById("moneyVideo");
+    const canvas = document.getElementById("hiddenCanvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    return canvas.toDataURL("image/jpeg", 0.8);
+}
+
+const RUPIAH_REFERENCE_IMAGES = {
+    "1000": "{{ url_for('static', filename='rupiah_refs/1000.jpg') }}",
+    "2000": "{{ url_for('static', filename='rupiah_refs/2000.jpg') }}",
+    "5000": "{{ url_for('static', filename='rupiah_refs/5000.jpg') }}",
+    "10000": "{{ url_for('static', filename='rupiah_refs/10000.jpg') }}",
+    "20000": "{{ url_for('static', filename='rupiah_refs/20000.jpg') }}",
+    "50000": "{{ url_for('static', filename='rupiah_refs/50000.jpg') }}",
+    "100000": "{{ url_for('static', filename='rupiah_refs/100000.jpg') }}",
+};
+
+/**
+ * Capture frame dan kirim ke backend untuk processing
+ */
+async function captureAndProcess() {
+    if (!isDetecting) return;
+
+    try {
+        document.getElementById("loadingSpinner").style.display = "block";
+
+        const imageBase64 = captureFrameAsBase64();
+        lastInputPreviewBase64 = imageBase64;
+        const { response, result } = await postMoneyForProcessing(imageBase64, {});
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = "/login";
+                return;
+            }
+            displayError(result.error || ("HTTP error! status: " + response.status));
+            document.getElementById("loadingSpinner").style.display = "none";
+            return;
+        }
+
+        document.getElementById("loadingSpinner").style.display = "none";
+
+        if (result.success) {
+            displayDetectionResult(result);
+
+            if (result.detected_money && result.confidence >= 0.75) {
+                const currentTime = Date.now();
+                const timeSinceLastSpeech = currentTime - lastSpeechTime;
+
+                if (result.detected_money !== lastDetectedMoney || 
+                    timeSinceLastSpeech >= SPEECH_DEBOUNCE_MS) {
+                    
+                    speakDetectionResult(result.message);
+                    
+                    lastDetectedMoney = result.detected_money;
+                    lastSpeechTime = currentTime;
+                }
+            }
+
+            // Dynamic interval:
+            // - If detected money is the same as the previous one => slow down to 3s
+            // - If different / none => speed up to 1.5s for responsiveness
+            const detected = result.detected_money ? String(result.detected_money) : "";
+            const last = lastDetectedMoney ? String(lastDetectedMoney) : "";
+            if (detected && last && detected === last) {
+                setDetectionInterval(CAPTURE_INTERVAL_SAME_MONEY_MS);
+            } else {
+                setDetectionInterval(CAPTURE_INTERVAL_DEFAULT_MS);
+            }
+        } else {
+            displayError(result.error || "Unknown error");
+            document.getElementById("loadingSpinner").style.display = "none";
+        }
+    } catch (error) {
+        console.error("[ERROR] captureAndProcess:", error);
+        displayError("Error: " + error.message);
+        document.getElementById("loadingSpinner").style.display = "none";
+    }
+}
+
+async function postMoneyForProcessing(imageBase64, extraPayload) {
+    const response = await fetch("/process-money", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+            image_data: imageBase64,
+            ...extraPayload,
+        }),
+    });
+
+    const result = await response
+        .json()
+        .catch(() => ({ success: false, error: "Response tidak valid (bukan JSON)" }));
+
+    return { response, result };
+}
+
+async function saveCurrentFrameToGallery() {
+    try {
+        document.getElementById("loadingSpinner").style.display = "block";
+        const imageBase64 = captureFrameAsBase64();
+        lastInputPreviewBase64 = imageBase64;
+        const fileName = `money_snapshot_${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`;
+
+        const { response, result } = await postMoneyForProcessing(imageBase64, {
+            save_to_gallery: true,
+            original_name: fileName,
+        });
+
+        document.getElementById("loadingSpinner").style.display = "none";
+
+        if (!response.ok || !result.success) {
+            displayError(result.error || ("HTTP error! status: " + response.status));
+            return;
+        }
+
+        displayDetectionResult(result);
+        if (result.detected_money && result.confidence >= 0.75) {
+            speakDetectionResult(result.message);
+            lastDetectedMoney = result.detected_money;
+            lastSpeechTime = Date.now();
+        }
+        if (result.saved_image_id) {
+            const resultDiv = document.getElementById("detectionResult");
+            resultDiv.innerHTML += `<div class="small text-muted mt-2">Tersimpan ke Gallery (ID: ${result.saved_image_id}).</div>`;
+        }
+    } catch (error) {
+        console.error("[ERROR] saveCurrentFrameToGallery:", error);
+        displayError("Error: " + error.message);
+        document.getElementById("loadingSpinner").style.display = "none";
+    }
+}
+
+async function checkUploadedImageToGallery() {
+    // Backward compatible alias (single file) - use the new multi-upload flow
+    return processSelectedMoneyUploadsToGallery();
+}
+
+function syncMoneyInputFiles() {
+    const input = document.getElementById("moneyFileInput");
+    if (!input) return;
+    try {
+        const dt = new DataTransfer();
+        moneySelectedFiles.forEach((file) => dt.items.add(file));
+        input.files = dt.files;
+    } catch (e) {
+        input.value = "";
+    }
+}
+
+function renderMoneyPreviews() {
+    const wrap = document.getElementById("moneyPreviewWrap");
+    const grid = document.getElementById("moneyPreviewGrid");
+    if (!wrap || !grid) return;
+    grid.innerHTML = "";
+
+    if (!moneySelectedFiles.length) {
+        wrap.classList.add("d-none");
+        return;
+    }
+
+    wrap.classList.remove("d-none");
+    moneySelectedFiles.forEach((file, index) => {
+        const card = document.createElement("div");
+        card.className = "position-relative border rounded overflow-hidden";
+        card.style.width = "10%";
+        card.style.minWidth = "70px";
+        card.style.maxWidth = "100px";
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle p-0";
+        removeBtn.style.width = "22px";
+        removeBtn.style.height = "22px";
+        removeBtn.style.transform = "translate(25%, -25%)";
+        removeBtn.textContent = "x";
+        removeBtn.addEventListener("click", () => {
+            moneySelectedFiles.splice(index, 1);
+            syncMoneyInputFiles();
+            renderMoneyPreviews();
+        });
+
+        const img = document.createElement("img");
+        img.className = "w-100";
+        img.style.aspectRatio = "1 / 1";
+        img.style.objectFit = "cover";
+        img.alt = file.name;
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+
+        card.appendChild(removeBtn);
+        card.appendChild(img);
+        grid.appendChild(card);
+    });
+}
+
+async function processSelectedMoneyUploadsToGallery() {
+    const input = document.getElementById("moneyFileInput");
+    const btn = document.getElementById("btnUploadCheck");
+
+    if (!moneySelectedFiles.length && input?.files?.length) {
+        moneySelectedFiles = Array.from(input.files);
+    }
+
+    if (!moneySelectedFiles.length) {
+        displayError("Pilih minimal 1 gambar dulu.");
+        return;
+    }
+
+    try {
+        if (btn) btn.disabled = true;
+        document.getElementById("loadingSpinner").style.display = "block";
+
+        for (let index = 0; index < moneySelectedFiles.length; index++) {
+            const file = moneySelectedFiles[index];
+            updateStatus(`Memproses ${index + 1}/${moneySelectedFiles.length}...`, "active");
+            const imageBase64 = await fileToDataURL(file);
+            lastInputPreviewBase64 = imageBase64;
+
+            const { response, result } = await postMoneyForProcessing(imageBase64, {
+                save_to_gallery: true,
+                original_name: file.name,
+            });
+
+            if (!response.ok || !result.success) {
+                displayError(result.error || ("HTTP error! status: " + response.status));
+                break;
+            }
+
+            displayDetectionResult(result);
+            if (result.detected_money && result.confidence >= 0.75) {
+                enqueueMoneySpeech(result.message);
+            }
+        }
+
+        updateStatus("Selesai memproses upload.", "info");
+    } catch (error) {
+        console.error("[ERROR] processSelectedMoneyUploadsToGallery:", error);
+        displayError("Error: " + error.message);
+    } finally {
+        document.getElementById("loadingSpinner").style.display = "none";
+        if (btn) btn.disabled = false;
+    }
+}
+
+function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Gagal membaca file"));
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Display detection result di UI
+ */
+function displayDetectionResult(result) {
+    const resultDiv = document.getElementById("detectionResult");
+
+    // retrigger slide animation on update
+    resultDiv.classList.remove("slide-in");
+    void resultDiv.offsetWidth;
+    resultDiv.classList.add("slide-in");
+
+    if (result.detected_money) {
+        const refSrc = RUPIAH_REFERENCE_IMAGES[String(result.detected_money)] || "";
+        const previewHtml = lastInputPreviewBase64
+            ? `<div class="mt-2 small text-muted">Gambar yang dicek:</div>
+               <img src="${lastInputPreviewBase64}" alt="Input" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" />`
+            : "";
+        const refHtml = refSrc
+            ? `<div class="mt-3 small text-muted">Contoh dari dataset:</div>
+               <img src="${refSrc}" alt="Referensi" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" onerror="this.style.display='none';" />`
+            : "";
+        resultDiv.innerHTML = "<div class=\"result-status\">✅ Uang Terdeteksi</div>" +
+            "<div class=\"result-money\">" + result.message + "</div>" +
+            "<div class=\"result-confidence\">Confidence: " + (result.confidence * 100).toFixed(1) + "%</div>" +
+            "<div class=\"detection-info\"><strong>Nominal:</strong> Rp " + 
+            result.detected_money.toLocaleString("id-ID") + "<br>" +
+            "<strong>Jumlah deteksi:</strong> " + result.detections.length + " objek</div>" +
+            previewHtml +
+            refHtml;
+    } else {
+        resultDiv.innerHTML = "<div class=\"result-status\">⚠️ Tidak Ada Uang Terdeteksi</div>" +
+            "<div style=\"font-size: 0.95rem; margin-top: 10px;\">Arahkan kamera ke uang Rupiah. Pastikan pencahayaan cukup dan posisi uang jelas terlihat.</div>";
+    }
+}
+
+/**
+ * Display error message
+ */
+function displayError(errorMessage) {
+    const resultDiv = document.getElementById("detectionResult");
+    resultDiv.classList.remove("slide-in");
+    void resultDiv.offsetWidth;
+    resultDiv.classList.add("slide-in");
+    resultDiv.innerHTML = "<div class=\"result-status\">❌ Error</div>" +
+        "<div style=\"font-size: 0.95rem; margin-top: 10px; color: #e74c3c;\">" + errorMessage + "</div>";
+}
+
+/**
+ * TEXT-TO-SPEECH IMPLEMENTATION
+ */
+function speakDetectionResult(message) {
+    const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance || 
+                                     window.webkitSpeechSynthesisUtterance;
+    
+    if (!SpeechSynthesisUtterance) {
+        console.warn("[WARNING] Web Speech API tidak didukung browser ini");
+        return;
+    }
+
+    try {
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(message);
+
+        utterance.lang = "id-ID";
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        utterance.onstart = function() {
+            console.log("[INFO] Speech started");
+        };
+
+        utterance.onend = function() {
+            console.log("[INFO] Speech ended");
+        };
+
+        utterance.onerror = function(event) {
+            console.error("[ERROR] Speech error:", event.error);
+        };
+
+        window.speechSynthesis.speak(utterance);
+    } catch (error) {
+        console.error("[ERROR] speakDetectionResult:", error);
+    }
+}
+
+/**
+ * Initialize aplikasi saat page load
+ */
+window.addEventListener("load", async function() {
+    console.log("[INFO] Initializing Money Detector...");
+    await initCamera();
+});
+
+/**
+ * Cleanup saat page unload
+ */
+window.addEventListener("unload", function() {
+    stopDetection();
+    if (videoStream) {
+        videoStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+    }
+});
+</script>
+{% endblock %}
