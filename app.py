@@ -420,6 +420,13 @@ def paginate_users_admin(q: str, page: int, page_size: int):
     ).fetchall()
     return rows, total, total_pages, current_page
 
+
+@app.route("/health")
+def health_check():
+    """Healthcheck endpoint untuk Docker"""
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route("/vendor/<path:filename>")
 def vendor(filename: str):
     return send_from_directory(NODE_MODULES_DIR, filename)
