@@ -987,6 +987,17 @@ def process_money():
         # 2. CHECK ROBOFLOW CLIENT
         # ====================================================================
         if not roboflow_client:
+            # Tambahkan pengecekan ini agar tidak memicu 'NoneType' object is not callable
+            if InferenceHTTPClient is None:
+                print("[WARNING] Gagal memproses: Library 'inference_sdk' tidak tersedia di sistem.", flush=True)
+                return jsonify({
+                    "success": True,
+                    "detections": [],
+                    "detected_money": None,
+                    "confidence": 0,
+                    "message": "Mode demo - Roboflow API tidak tersedia karena library 'inference-sdk' belum terinstal."
+                })
+            
             # Cari bagian inisialisasi Roboflow dan ubah menjadi:
             try:
                 roboflow_client = InferenceHTTPClient(
@@ -1000,6 +1011,7 @@ def process_money():
                 print(f"[ERROR] Tipe Error: {type(e).__name__}", flush=True)
                 print(f"[ERROR] Detail Error: {str(e)}", flush=True)
                 roboflow_client = None
+            
             # Fallback response untuk testing tanpa API key valid
             return jsonify({
                 "success": True,
