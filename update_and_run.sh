@@ -125,22 +125,63 @@ cd "$REPO_DIR" 2>> "$LOG_FILE" || {
 
 log "INFO" "Current directory: $(pwd)"
 
-# Fetch latest changes
-if ! git fetch origin 2>> "$LOG_FILE"; then
-    log_error "Git fetch gagal"
-    log_error "Cek: git status, git remote -v"
+# Check directory permissions
+log "INFO" "Checking directory permissions..."
+if [ ! -r "$REPO_DIR" ]; then
+    log_error "Tidak bisa read direktori: $REPO_DIR"
+    log_error "User: $(whoami), uid: $(id -u)"
+    log_error "Directory owner: $(ls -ld $REPO_DIR | awk '{print $3, $4}')"
+    log_error "Solution: sudo chown -R $(whoami):$(id -gn) $REPO_DIR"
+    exit 1
+fi
+
+if [ ! -w "$REPO_DIR" ]; then
+    log_warn "Tidak bisa write ke direktori (non-critical untuk git fetch)"
+fi
+
+# Check git config
+log "INFO" "Checking git remote..."
+git remote -v 2>> "$LOG_FILE" | while read line; do
+    log "INFO" "  Remote: $line"
+done
+
+# Fetch latest changes dengan error capture
+log "INFO" "Running: git fetch origin"
+FETCH_OUTPUT=$(git fetch origin 2>&1)
+FETCH_EXIT=$?
+
+if [ $FETCH_EXIT -ne 0 ]; then
+    log_error "Git fetch gagal (exit code: $FETCH_EXIT)"
+    log_error "Error output:"
+    echo "$FETCH_OUTPUT" | while read line; do
+        log_error "  $line"
+    done
+    log_error "Troubleshooting:"
+    log_error "  1. Check git remote: git remote -v"
+    log_error "  2. Check permissions: ls -la .git"
+    log_error "  3. Test SSH (if using SSH): ssh -T git@github.com"
+    log_error "  4. Test HTTPS: curl -I https://github.com/Trisn0802/Background_Remover.git"
     exit 1
 fi
 log_success "Git fetch berhasil"
 
-# Reset ke branch utama
-if ! git reset --hard origin/"$BRANCH" 2>> "$LOG_FILE"; then
-    log_error "Git reset gagal"
+# Reset ke branch utama dengan error capture
+log "INFO" "Running: git reset --hard origin/$BRANCH"
+RESET_OUTPUT=$(git reset --hard origin/"$BRANCH" 2>&1)
+RESET_EXIT=$?
+
+if [ $RESET_EXIT -ne 0 ]; then
+    log_error "Git reset gagal (exit code: $RESET_EXIT)"
+    log_error "Error output:"
+    echo "$RESET_OUTPUT" | while read line; do
+        log_error "  $line"
+    done
     exit 1
 fi
 log_success "Git reset ke origin/$BRANCH berhasil"
 
 # Clean untracked files (opsional)
+log "INFO" "Running: git clean -fd"
 if ! git clean -fd 2>> "$LOG_FILE"; then
     log_warn "Git clean failed (non-critical)"
 fi
@@ -264,3 +305,5 @@ log "INFO" "Script selesai - $(date)"
 echo ""
 echo -e "${GREEN}✓ Update selesai!${NC}"
 echo -e "${BLUE}Log file: $LOG_FILE${NC}"
+echo ""
+read -p "Tekan Enter untuk keluar..."

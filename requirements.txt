@@ -9,4 +9,3 @@ ultralytics
 numpy
 opencv-python
 gunicorn
-python-multipart

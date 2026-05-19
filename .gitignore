@@ -9,3 +9,11 @@ database/
 backup/
 .env
 *.pyc
+ERROR_GIT_FETCH_FAILED.md
+FINAL_SUMMARY.md
+GIT_PUSH_CHECKLIST.md
+RUN_ON_SERVER.md
+SETUP_FRESH_SERVER.md
+TROUBLESHOOTING.md
+debug.sh
+fix-permissions.sh
