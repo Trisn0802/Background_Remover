@@ -2,6 +2,10 @@ services:
   app:
     build: .
     container_name: background_remover
+    # Tambahkan DNS ini agar container tidak "bingung" dengan DNS Pihole/WARP saat install
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "5100:5100"
     volumes:
