@@ -1,4 +1,6 @@
 FROM python:3.11-slim
+# Tambahkan ini di baris pertama Dockerfile
+RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 WORKDIR /app
 
@@ -18,7 +20,8 @@ RUN useradd -m -u 1000 appuser
 COPY requirements.txt .
 
 # 4. Instal Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Menggunakan mirror yang stabil dan menambahkan timeout
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # 5. Salin seluruh kode aplikasi
 COPY . .
