@@ -80,6 +80,21 @@ ROBOFLOW_WORKFLOW_CLASSES = os.environ.get("ROBOFLOW_WORKFLOW_CLASSES", "")
 ROBOFLOW_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", "")
 ROBOFLOW_API_URL = "https://serverless.roboflow.com"
 
+# Inisialisasi Roboflow client jika library tersedia
+roboflow_client = None
+if InferenceHTTPClient:
+    try:
+        roboflow_client = InferenceHTTPClient(
+            api_url=ROBOFLOW_API_URL,
+            api_key=ROBOFLOW_API_KEY,
+        )
+        print("[INFO] Roboflow client initialized successfully")
+    except Exception as e:
+        # UBAH BAGIAN INI menjadi lebih informatif
+        print(f"[ERROR] !!! Gagal Inisialisasi Roboflow !!!")
+        print(f"[ERROR] Detail Error: {str(e)}")
+        # Biarkan tetap None agar tidak crash
+
 # Konfigurasi deteksi uang (confidence threshold dan kategori)
 MONEY_CONFIDENCE_THRESHOLD = 0.75  # Minimum confidence untuk mendeteksi uang
 MONEY_CLASSES = {
