@@ -98,9 +98,56 @@
         background-color: #2471a3;
     }
 
+    .btn-source {
+        background-color: #8e44ad;
+        color: white;
+    }
+
+    .btn-source:hover:not(:disabled) {
+        background-color: #7d3c98;
+    }
+
     .btn-control:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+
+    .camera-source-panel {
+        display: none;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        background: #ffffff;
+        border: 1px solid rgba(44, 62, 80, 0.12);
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .camera-source-panel.is-open {
+        display: flex;
+    }
+
+    body.theme-dark .camera-source-panel {
+        background: #0b1220;
+        border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    .camera-source-select {
+        min-width: min(100%, 260px);
+        max-width: 100%;
+        padding: 9px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        color: #2c3e50;
+        background: #ffffff;
+    }
+
+    body.theme-dark .camera-source-select {
+        background: #111827;
+        border-color: #374151;
+        color: #e5e7eb;
     }
 
     .detection-result {
@@ -318,6 +365,21 @@
                     <button class="btn-control btn-save" id="btnSaveSnapshot" onclick="saveCurrentFrameToGallery()" disabled>
                         💾 Simpan Snapshot
                     </button>
+                    <button class="btn-control btn-source" id="btnCameraSource" onclick="toggleCameraSourcePanel()">
+                        📷 Source Kamera
+                    </button>
+                </div>
+
+                <div class="camera-source-panel" id="cameraSourcePanel">
+                    <select class="camera-source-select" id="cameraSourceSelect" aria-label="Pilih source kamera">
+                        <option value="">Memuat daftar kamera...</option>
+                    </select>
+                    <button class="btn-control btn-source" type="button" onclick="switchCameraByFacingMode('user')">
+                        Kamera Depan
+                    </button>
+                    <button class="btn-control btn-source" type="button" onclick="switchCameraByFacingMode('environment')">
+                        Kamera Belakang
+                    </button>
                 </div>
 
                 <div class="loading-spinner" id="loadingSpinner">
@@ -388,6 +450,9 @@ const CAPTURE_INTERVAL_DEFAULT_MS = 1500;
 const CAPTURE_INTERVAL_SAME_MONEY_MS = 3000;
 let currentCaptureIntervalMs = CAPTURE_INTERVAL_DEFAULT_MS;
 let lastInputPreviewBase64 = "";
+let availableVideoDevices = [];
+let currentCameraDeviceId = "";
+let currentFacingMode = "environment";
 
 let moneySelectedFiles = [];
 let moneySpeakQueue = [];
@@ -431,7 +496,7 @@ function speakNextMoneyQueue() {
 /**
  * Fungsi untuk mendapatkan akses ke webcam
  */
-async function initCamera() {
+async function initCamera(options = {}) {
     try {
         // Check browser support untuk mediaDevices
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -443,18 +508,18 @@ async function initCamera() {
         }
 
         const video = document.getElementById("moneyVideo");
-        const constraints = {
-            video: {
-                facingMode: "environment",
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
-        };
+        const constraints = buildCameraConstraints(options);
 
         console.log("[INFO] Requesting camera access...");
+        stopCameraStream();
         videoStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = videoStream;
+        await video.play().catch(() => {});
+
+        const activeTrack = videoStream.getVideoTracks()[0];
+        const activeSettings = activeTrack?.getSettings ? activeTrack.getSettings() : {};
+        currentCameraDeviceId = activeSettings.deviceId || options.deviceId || "";
+        currentFacingMode = activeSettings.facingMode || options.facingMode || currentFacingMode;
 
         // Tunggu video track dimulai
         video.onloadedmetadata = function() {
@@ -463,8 +528,10 @@ async function initCamera() {
             if (saveBtn) saveBtn.disabled = false;
         };
 
+        await loadCameraDevices();
         updateStatus("Kamera siap", "active");
         console.log("[INFO] Camera initialized successfully");
+        return true;
     } catch (error) {
         console.error("[ERROR] Camera access error:", error);
         const errorMsg = error.name === "NotAllowedError" 
@@ -475,7 +542,101 @@ async function initCamera() {
         
         updateStatus("Error: " + errorMsg, "error");
         displayError("❌ Error Kamera: " + errorMsg);
+        return false;
     }
+}
+
+function buildCameraConstraints(options = {}) {
+    const video = {
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+    };
+
+    if (options.deviceId) {
+        video.deviceId = { exact: options.deviceId };
+    } else {
+        video.facingMode = { ideal: options.facingMode || currentFacingMode || "environment" };
+    }
+
+    return { video, audio: false };
+}
+
+function stopCameraStream() {
+    if (videoStream) {
+        videoStream.getTracks().forEach((track) => track.stop());
+        videoStream = null;
+    }
+}
+
+async function loadCameraDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        availableVideoDevices = devices.filter((device) => device.kind === "videoinput");
+        renderCameraSourceOptions();
+    } catch (error) {
+        console.warn("[WARNING] Tidak bisa membaca daftar kamera:", error);
+    }
+}
+
+function renderCameraSourceOptions() {
+    const select = document.getElementById("cameraSourceSelect");
+    if (!select) return;
+
+    select.innerHTML = "";
+
+    if (!availableVideoDevices.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Tidak ada kamera lain terdeteksi";
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+    }
+
+    select.disabled = false;
+    availableVideoDevices.forEach((device, index) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label || `Kamera ${index + 1}`;
+        option.selected = device.deviceId === currentCameraDeviceId;
+        select.appendChild(option);
+    });
+}
+
+async function toggleCameraSourcePanel() {
+    const panel = document.getElementById("cameraSourcePanel");
+    if (!panel) return;
+
+    panel.classList.toggle("is-open");
+    if (panel.classList.contains("is-open")) {
+        await loadCameraDevices();
+    }
+}
+
+async function switchCameraByDeviceId(deviceId) {
+    if (!deviceId || deviceId === currentCameraDeviceId) return;
+
+    const wasDetecting = isDetecting;
+    if (wasDetecting) stopDetection();
+
+    updateStatus("Mengganti source kamera...", "info");
+    const success = await initCamera({ deviceId });
+
+    if (wasDetecting && success && videoStream) startDetection();
+}
+
+async function switchCameraByFacingMode(facingMode) {
+    const wasDetecting = isDetecting;
+    if (wasDetecting) stopDetection();
+
+    currentCameraDeviceId = "";
+    currentFacingMode = facingMode;
+    updateStatus(facingMode === "user" ? "Mengaktifkan kamera depan..." : "Mengaktifkan kamera belakang...", "info");
+    const success = await initCamera({ facingMode });
+
+    if (wasDetecting && success && videoStream) startDetection();
 }
 
 /**
@@ -538,6 +699,13 @@ window.addEventListener("DOMContentLoaded", () => {
         input.addEventListener("change", () => {
             moneySelectedFiles = Array.from(input.files || []);
             renderMoneyPreviews();
+        });
+    }
+
+    const cameraSelect = document.getElementById("cameraSourceSelect");
+    if (cameraSelect) {
+        cameraSelect.addEventListener("change", () => {
+            switchCameraByDeviceId(cameraSelect.value);
         });
     }
 });
@@ -932,11 +1100,7 @@ window.addEventListener("load", async function() {
  */
 window.addEventListener("unload", function() {
     stopDetection();
-    if (videoStream) {
-        videoStream.getTracks().forEach(function(track) {
-            track.stop();
-        });
-    }
+    stopCameraStream();
 });
 </script>
 {% endblock %}
