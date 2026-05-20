@@ -9,10 +9,12 @@ services:
     ports:
       - "5100:5100"
     volumes:
-      - .:/app
-      - /app/node_modules
-      - uploads_data:/app/uploads/processed
-      - db_data:/app/database
+      # - .:/app
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+      # - /app/node_modules
+      # - uploads_data:/app/uploads/processed
+      # - db_data:/app/database
     restart: unless-stopped
     environment:
       - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
@@ -23,6 +25,6 @@ services:
       - SECRET_KEY=${SECRET_KEY:-dev-secret-change-me}
       - FLASK_ENV=development
 
-volumes:
-  uploads_data:
-  db_data:
+# volumes:
+#   uploads_data:
+#   db_data:

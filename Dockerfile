@@ -21,7 +21,7 @@ COPY requirements.txt .
 
 # 4. Instal Python dependencies
 # Menggunakan mirror yang stabil dan menambahkan timeout
-RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt --no-install-recommends
 
 # 5. Salin seluruh kode aplikasi
 COPY . .

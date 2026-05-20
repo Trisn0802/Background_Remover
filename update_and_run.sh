@@ -243,6 +243,14 @@ if ! docker compose down 2>> "$LOG_FILE"; then
 fi
 log_success "Docker compose down berhasil"
 
+# ---------------------------------------------------------
+# TAMBAHKAN BARIS INI DI SKRIP UPDATE SEBELUM DOCKER COMPOSE UP
+# ---------------------------------------------------------
+echo "[INFO] Menyelaraskan izin akses folder untuk Non-Root User..."
+mkdir -p database uploads/processed
+sudo chown -R 1000:1000 database uploads
+# ---------------------------------------------------------
+
 # ====================================================================
 # STEP 6: BUILD DAN JALANKAN CONTAINER BARU
 # ====================================================================
