@@ -41,6 +41,20 @@ try:
 except ImportError:
     InferenceHTTPClient = None
 
+# EasyOCR untuk membaca teks pada uang
+try:
+    import easyocr
+    HAS_EASYOCR = True
+except ImportError:
+    HAS_EASYOCR = False
+
+# OpenCV untuk image processing
+try:
+    import cv2
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+
 BASE_DIR = Path(__file__).resolve().parent
 if load_dotenv:
     load_dotenv(BASE_DIR / ".env")
@@ -118,6 +132,229 @@ if InferenceHTTPClient:
         print("[INFO] Roboflow client initialized successfully")
     except Exception as e:
         print(f"[WARNING] Roboflow client initialization failed: {e}")
+
+
+# ============================================================================
+# OCR CONFIGURATION UNTUK VALIDASI NOMINAL UANG
+# ============================================================================
+# Konfigurasi OCR untuk membaca teks pada uang
+ocr_reader = None
+if HAS_EASYOCR:
+    try:
+        # Initialize OCR reader dengan GPU support (fallback ke CPU jika tidak tersedia)
+        try:
+            ocr_reader = easyocr.Reader(['id', 'en'], gpu=True)
+            print("[INFO] EasyOCR reader initialized successfully WITH GPU")
+        except Exception as gpu_error:
+            print(f"[WARNING] GPU initialization failed: {gpu_error}")
+            print("[INFO] Falling back to CPU mode...")
+            ocr_reader = easyocr.Reader(['id', 'en'], gpu=False)
+            print("[INFO] EasyOCR reader initialized successfully on CPU")
+    except Exception as e:
+        print(f"[WARNING] EasyOCR initialization failed: {e}")
+        ocr_reader = None
+
+# Mapping nominal uang ke berbagai format teks yang mungkin terdeteksi
+MONEY_DENOMINATIONS = {
+    "1000": ["1000", "seribu", "ribu"],
+    "2000": ["2000", "dua ribu", "duaribu"],
+    "5000": ["5000", "lima ribu", "limaribu"],
+    "10000": ["10000", "sepuluh ribu", "sepuluhribu", "sepuluh", "10"],
+    "20000": ["20000", "dua puluh ribu", "duapuluribu", "dua puluh"],
+    "50000": ["50000", "lima puluh ribu", "limapuluribu", "lima puluh"],
+    "100000": ["100000", "seratus ribu", "seratusribu", "seratus"],
+}
+
+# Indonesian number text to digits mapping
+INDONESIAN_NUMBERS = {
+    "nol": "0", "satu": "1", "dua": "2", "tiga": "3", "empat": "4",
+    "lima": "5", "enam": "6", "tujuh": "7", "delapan": "8", "sembilan": "9",
+    "sepuluh": "10", "duapuluh": "20", "tigapuluh": "30", "empatpuluh": "40",
+    "limapuluh": "50", "enampuluh": "60", "tujuhpuluh": "70", "delapanpuluh": "80",
+    "sembilanpuluh": "90", "seratus": "100", "ribu": "1000",
+}
+
+
+def extract_money_from_ocr_text(ocr_text: str) -> str | None:
+    """
+    Ekstrak nominal uang dari hasil OCR.
+    Mencari kecocokan dengan format nominal yang dikenal.
+    
+    Args:
+        ocr_text: Teks hasil OCR
+    
+    Returns:
+        Nominal uang (misal "20000") atau None jika tidak ditemukan
+    """
+    if not ocr_text:
+        return None
+    
+    text_lower = ocr_text.lower().strip()
+    
+    # Cek setiap nominal
+    for nominal, variations in MONEY_DENOMINATIONS.items():
+        for variation in variations:
+            if variation.lower() in text_lower or text_lower in variation.lower():
+                return nominal
+    
+    return None
+
+
+def enhance_image_for_ocr(image_bytes: bytes) -> bytes:
+    """
+    Enhance image sebelum OCR untuk meningkatkan akurasi pembacaan teks.
+    
+    Args:
+        image_bytes: Image dalam format bytes
+    
+    Returns:
+        Enhanced image dalam format bytes
+    """
+    if not HAS_CV2:
+        return image_bytes
+    
+    try:
+        # Konversi bytes ke numpy array
+        import numpy as np
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return image_bytes
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # Apply bilateral filter untuk noise reduction sambil menjaga edge
+        filtered = cv2.bilateralFilter(enhanced, 9, 75, 75)
+        
+        # Konversi kembali ke BGR
+        result_bgr = cv2.cvtColor(filtered, cv2.COLOR_GRAY2BGR)
+        
+        # Encode kembali ke bytes
+        _, buffer = cv2.imencode('.jpg', result_bgr)
+        return buffer.tobytes()
+    except Exception as e:
+        print(f"[WARNING] Image enhancement failed: {e}")
+        return image_bytes
+
+
+def read_text_from_image(image_bytes: bytes) -> list[tuple[str, float]]:
+    """
+    Baca teks dari image menggunakan EasyOCR.
+    
+    Args:
+        image_bytes: Image dalam format bytes
+    
+    Returns:
+        List of (text, confidence) tuples
+    """
+    if not ocr_reader:
+        return []
+    
+    try:
+        import numpy as np
+        # Konversi bytes ke numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR) if HAS_CV2 else None
+        
+        if img is None:
+            # Fallback: gunakan PIL
+            from PIL import Image
+            from io import BytesIO
+            img = Image.open(BytesIO(image_bytes))
+            results = ocr_reader.readtext(np.array(img))
+        else:
+            results = ocr_reader.readtext(img)
+        
+        # Extract text dan confidence
+        texts = []
+        for detection in results:
+            if len(detection) >= 2:
+                text = detection[1]
+                confidence = float(detection[2])
+                texts.append((text, confidence))
+        
+        return texts
+    except Exception as e:
+        print(f"[WARNING] OCR reading failed: {e}")
+        return []
+
+
+def validate_money_detection_with_ocr(
+    detected_money: str | None,
+    top_confidence: float,
+    image_bytes: bytes
+) -> tuple[str | None, float, str]:
+    """
+    Validasi deteksi nominal uang menggunakan OCR sebagai confirmation.
+    
+    Args:
+        detected_money: Nominal yang terdeteksi dari Roboflow (misal "20000")
+        top_confidence: Confidence dari Roboflow detection
+        image_bytes: Image bytes untuk OCR reading
+    
+    Returns:
+        Tuple (validated_money, confidence, message)
+    """
+    if not ocr_reader or not image_bytes:
+        # Jika tidak ada OCR, return hasil Roboflow as-is
+        return detected_money, top_confidence, ""
+    
+    try:
+        # Enhance image untuk OCR
+        enhanced_bytes = enhance_image_for_ocr(image_bytes)
+        
+        # Baca teks dari image
+        ocr_results = read_text_from_image(enhanced_bytes)
+        
+        if not ocr_results:
+            return detected_money, top_confidence, ""
+        
+        # Cari nominal dari OCR text
+        ocr_money = None
+        ocr_confidences = []
+        
+        for text, confidence in ocr_results:
+            money = extract_money_from_ocr_text(text)
+            if money:
+                ocr_money = money
+                ocr_confidences.append(confidence)
+                print(f"[INFO] OCR found money: {money} from '{text}' (confidence: {confidence:.2f})")
+        
+        # Jika OCR menemukan uang
+        if ocr_money:
+            avg_ocr_confidence = sum(ocr_confidences) / len(ocr_confidences) if ocr_confidences else 0
+            
+            # Jika OCR cocok dengan Roboflow detection, tingkatkan confidence
+            if ocr_money == detected_money:
+                combined_confidence = min(
+                    (top_confidence + avg_ocr_confidence) / 2 * 1.1,  # Boost ketika match
+                    0.99
+                )
+                message = f"Dikonfirmasi OCR: {ocr_money}"
+                return detected_money, combined_confidence, message
+            
+            # Jika OCR berbeda, gunakan OCR jika confidence lebih tinggi
+            elif avg_ocr_confidence > top_confidence:
+                message = f"Koreksi dari OCR: {ocr_money} (Roboflow: {detected_money})"
+                return ocr_money, avg_ocr_confidence, message
+            
+            # Jika keduanya mendeteksi tapi berbeda, cek mana yang lebih reliable
+            else:
+                message = f"OCR terdeteksi: {ocr_money}, namun Roboflow lebih confident"
+                return detected_money, top_confidence, message
+        
+        # Jika OCR tidak menemukan nominal apapun
+        return detected_money, top_confidence, ""
+    
+    except Exception as e:
+        print(f"[WARNING] OCR validation error: {e}")
+        return detected_money, top_confidence, ""
 
 
 
@@ -1156,12 +1393,29 @@ def process_money():
                     money_name = class_key.replace("rupiah", "Rupiah").title()
                     message = f"Terdeteksi: {money_name}"
                     break
+        
+        # ====================================================================
+        # 5.5 VALIDATE WITH OCR FOR INCREASED ACCURACY
+        # ====================================================================
+        # Only apply OCR if detection mode is set to "roboflow_ocr"
+        if detected_money and ocr_reader and data.get("detection_mode") == "roboflow_ocr":
+            validated_money, enhanced_confidence, ocr_msg = validate_money_detection_with_ocr(
+                detected_money,
+                top_confidence,
+                image_bytes
+            )
+            if validated_money and validated_money != detected_money:
+                detected_money = validated_money
+                top_confidence = enhanced_confidence
+            if ocr_msg:
+                message += f" [{ocr_msg}]"
 
         # ====================================================================
-        # 6. RETURN RESPONSE
+        # 6. SAVE TO GALLERY (OPTIONAL)
         # ====================================================================
-        save_to_gallery = bool(data.get("save_to_gallery")) if isinstance(data, dict) else False
         image_id = None
+        save_to_gallery = bool(data.get("save_to_gallery")) if isinstance(data, dict) else False
+        
         if save_to_gallery:
             user = current_user()
             owner_id = user["id"] if user else get_anonymous_user_id()
@@ -1196,6 +1450,9 @@ def process_money():
             db.commit()
             image_id = db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
 
+        # ====================================================================
+        # 7. RETURN RESPONSE
+        # ====================================================================
         return jsonify({
             "success": True,
             "detections": detections,

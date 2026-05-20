@@ -294,9 +294,9 @@
     }
 
     .loading-spinner {
-        display: none;
         text-align: center;
-        margin-top: 10px;
+        margin-top: 0;
+        margin-bottom: 15px;
     }
 
     .spinner {
@@ -355,20 +355,27 @@
                     <video id="moneyVideo" autoplay playsinline></video>
                 </div>
 
-                <div class="video-controls">
-                    <button class="btn-control btn-start" id="btnStart" onclick="startDetection()">
-                        ▶️ Mulai Deteksi
-                    </button>
-                    <button class="btn-control btn-stop d-none" id="btnStop" onclick="stopDetection()" disabled>
-                        ⏹️ Henti Deteksi
-                    </button>
-                    <button class="btn-control btn-save" id="btnSaveSnapshot" onclick="saveCurrentFrameToGallery()" disabled>
-                        💾 Simpan Snapshot
-                    </button>
-                    <button class="btn-control btn-source" id="btnCameraSource" onclick="toggleCameraSourcePanel()">
-                        📷 Source Kamera
-                    </button>
-                </div>
+                 <div class="video-controls">
+                     <button class="btn-control btn-start" id="btnStart" onclick="startDetection()">
+                         ▶️ Mulai Deteksi
+                     </button>
+                     <button class="btn-control btn-stop d-none" id="btnStop" onclick="stopDetection()" disabled>
+                         ⏹️ Henti Deteksi
+                     </button>
+                     <button class="btn-control btn-save" id="btnSaveSnapshot" onclick="saveCurrentFrameToGallery()" disabled>
+                         💾 Simpan Snapshot
+                     </button>
+                     <button class="btn-control btn-source" id="btnCameraSource" onclick="toggleCameraSourcePanel()">
+                         📷 Source Kamera
+                     </button>
+                     <div class="detection-mode-select">
+                         <label for="detectionModeSelect">Mode Deteksi:</label>
+                         <select id="detectionModeSelect" class="form-select form-select-sm" onchange="changeDetectionMode(this.value)">
+                             <option value="roboflow_only">Roboflow Saja</option>
+                             <option value="roboflow_ocr">Roboflow + OCR</option>
+                         </select>
+                     </div>
+                 </div>
 
                 <div class="camera-source-panel" id="cameraSourcePanel">
                     <select class="camera-source-select" id="cameraSourceSelect" aria-label="Pilih source kamera">
@@ -382,19 +389,21 @@
                     </button>
                 </div>
 
-                <div class="loading-spinner" id="loadingSpinner">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 10px; color: #3498db; font-weight: bold;">Memproses...</p>
-                </div>
             </div>
         </div>
 
         <div class="detector-right">
             <!-- Detection Result -->
             <div class="detection-result" id="detectionResult">
-                <div class="result-status">Hasil Deteksi</div>
-                <div style="font-size: 0.95rem;">
-                    Tekan tombol "Mulai Deteksi" untuk memulai
+                <div class="loading-spinner" id="loadingSpinner" style="display: none; margin-bottom: 15px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px; color: #3498db; font-weight: bold;">Memproses...</p>
+                </div>
+                <div id="detectionResultContent">
+                    <div class="result-status">Hasil Deteksi</div>
+                    <div style="font-size: 0.95rem;">
+                        Tekan tombol "Mulai Deteksi" untuk memulai
+                    </div>
                 </div>
             </div>
 
@@ -453,16 +462,36 @@ let lastInputPreviewBase64 = "";
 let availableVideoDevices = [];
 let currentCameraDeviceId = "";
 let currentFacingMode = "environment";
+// Load detection mode from localStorage or default to roboflow_only
+let detectionMode = localStorage.getItem('moneyDetectorMode') || "roboflow_only"; // "roboflow_only" or "roboflow_ocr"
 
 let moneySelectedFiles = [];
 let moneySpeakQueue = [];
 let moneySpeaking = false;
 
-function enqueueMoneySpeech(message) {
-    if (!message) return;
-    moneySpeakQueue.push(message);
-    if (!moneySpeaking) speakNextMoneyQueue();
+// Initialize detection mode on page load
+function initializeDetectionMode() {
+    const modeSelect = document.getElementById("detectionModeSelect");
+    if (modeSelect) {
+        modeSelect.value = detectionMode;
+        console.log("[INFO] Detection mode loaded from storage: " + detectionMode);
+        updateStatus("Mode deteksi: " + (detectionMode === "roboflow_only" ? "Roboflow Saja" : "Roboflow + OCR"), "info");
+    }
 }
+
+function enqueueMoneySpeech(message) {
+     if (!message) return;
+     moneySpeakQueue.push(message);
+     if (!moneySpeaking) speakNextMoneyQueue();
+ }
+
+ function changeDetectionMode(mode) {
+     detectionMode = mode;
+     // Save to localStorage
+     localStorage.setItem('moneyDetectorMode', mode);
+     console.log("[INFO] Detection mode changed to: " + mode);
+     updateStatus("Mode deteksi diubah ke: " + (mode === "roboflow_only" ? "Roboflow Saja" : "Roboflow + OCR"), "info");
+ }
 
 function speakNextMoneyQueue() {
     const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance ||
@@ -515,6 +544,10 @@ async function initCamera(options = {}) {
         videoStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = videoStream;
         await video.play().catch(() => {});
+
+        // Enable the save button immediately after setting video source
+        const saveBtn = document.getElementById("btnSaveSnapshot");
+        if (saveBtn) saveBtn.disabled = false;
 
         const activeTrack = videoStream.getVideoTracks()[0];
         const activeSettings = activeTrack?.getSettings ? activeTrack.getSettings() : {};
@@ -764,120 +797,168 @@ const RUPIAH_REFERENCE_IMAGES = {
  * Capture frame dan kirim ke backend untuk processing
  */
 async function captureAndProcess() {
-    if (!isDetecting) return;
+     if (!isDetecting) return;
 
-    try {
-        document.getElementById("loadingSpinner").style.display = "block";
+     const spinner = document.getElementById("loadingSpinner");
+     try {
+         if (spinner) {
+             spinner.style.display = "block";
+         }
 
-        const imageBase64 = captureFrameAsBase64();
-        lastInputPreviewBase64 = imageBase64;
-        const { response, result } = await postMoneyForProcessing(imageBase64, {});
+         const imageBase64 = captureFrameAsBase64();
+         lastInputPreviewBase64 = imageBase64;
+         const { response, result } = await postMoneyForProcessing(imageBase64, {});
 
-        if (!response.ok) {
-            if (response.status === 401) {
-                window.location.href = "/login";
-                return;
-            }
-            displayError(result.error || ("HTTP error! status: " + response.status));
-            document.getElementById("loadingSpinner").style.display = "none";
-            return;
-        }
+         if (!response.ok) {
+             if (response.status === 401) {
+                 window.location.href = "/login";
+                 return;
+             }
+             displayError(result.error || ("HTTP error! status: " + response.status));
+             if (spinner) {
+                 spinner.style.display = "none";
+             }
+             return;
+         }
 
-        document.getElementById("loadingSpinner").style.display = "none";
+         if (spinner) {
+             spinner.style.display = "none";
+         }
 
-        if (result.success) {
-            displayDetectionResult(result);
+         if (result.success) {
+             displayDetectionResult(result);
 
-            if (result.detected_money && result.confidence >= 0.75) {
-                const currentTime = Date.now();
-                const timeSinceLastSpeech = currentTime - lastSpeechTime;
+             if (result.detected_money && result.confidence >= 0.75) {
+                 const currentTime = Date.now();
+                 const timeSinceLastSpeech = currentTime - lastSpeechTime;
 
-                if (result.detected_money !== lastDetectedMoney || 
-                    timeSinceLastSpeech >= SPEECH_DEBOUNCE_MS) {
-                    
-                    speakDetectionResult(result.message);
-                    
-                    lastDetectedMoney = result.detected_money;
-                    lastSpeechTime = currentTime;
-                }
-            }
+                 if (result.detected_money !== lastDetectedMoney || 
+                     timeSinceLastSpeech >= SPEECH_DEBOUNCE_MS) {
+                     
+                     // Extract hanya nominal untuk speech (misal: "20000")
+                     const nominalOnly = result.detected_money;
+                     // Mapping nominal ke nama rupiah untuk speech
+                     const nominalNames = {
+                         "1000": "Seribu Rupiah",
+                         "2000": "Dua Ribu Rupiah",
+                         "5000": "Lima Ribu Rupiah",
+                         "10000": "Sepuluh Ribu Rupiah",
+                         "20000": "Dua Puluh Ribu Rupiah",
+                         "50000": "Lima Puluh Ribu Rupiah",
+                         "100000": "Seratus Ribu Rupiah"
+                     };
+                     const speechText = nominalNames[nominalOnly] || "Uang Terdeteksi";
+                     
+                     speakDetectionResult(speechText);
+                     
+                     lastDetectedMoney = result.detected_money;
+                     lastSpeechTime = currentTime;
+                 }
+             }
 
-            // Dynamic interval:
-            // - If detected money is the same as the previous one => slow down to 3s
-            // - If different / none => speed up to 1.5s for responsiveness
-            const detected = result.detected_money ? String(result.detected_money) : "";
-            const last = lastDetectedMoney ? String(lastDetectedMoney) : "";
-            if (detected && last && detected === last) {
-                setDetectionInterval(CAPTURE_INTERVAL_SAME_MONEY_MS);
-            } else {
-                setDetectionInterval(CAPTURE_INTERVAL_DEFAULT_MS);
-            }
-        } else {
-            displayError(result.error || "Unknown error");
-            document.getElementById("loadingSpinner").style.display = "none";
-        }
-    } catch (error) {
-        console.error("[ERROR] captureAndProcess:", error);
-        displayError("Error: " + error.message);
-        document.getElementById("loadingSpinner").style.display = "none";
-    }
-}
+             // Dynamic interval:
+             // - If detected money is the same as the previous one => slow down to 3s
+             // - If different / none => speed up to 1.5s for responsiveness
+             const detected = result.detected_money ? String(result.detected_money) : "";
+             const last = lastDetectedMoney ? String(lastDetectedMoney) : "";
+             if (detected && last && detected === last) {
+                 setDetectionInterval(CAPTURE_INTERVAL_SAME_MONEY_MS);
+             } else {
+                 setDetectionInterval(CAPTURE_INTERVAL_DEFAULT_MS);
+             }
+         } else {
+             displayError(result.error || "Unknown error");
+             if (spinner) {
+                 spinner.style.display = "none";
+             }
+         }
+     } catch (error) {
+         console.error("[ERROR] captureAndProcess:", error);
+         displayError("Error: " + error.message);
+         if (spinner) {
+             spinner.style.display = "none";
+         }
+     }
+ }
 
 async function postMoneyForProcessing(imageBase64, extraPayload) {
-    const response = await fetch("/process-money", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-            image_data: imageBase64,
-            ...extraPayload,
-        }),
-    });
+     const response = await fetch("/process-money", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         credentials: "include",
+         body: JSON.stringify({
+             image_data: imageBase64,
+             detection_mode: detectionMode,
+             ...extraPayload,
+         }),
+     });
 
-    const result = await response
-        .json()
-        .catch(() => ({ success: false, error: "Response tidak valid (bukan JSON)" }));
+     const result = await response
+         .json()
+         .catch(() => ({ success: false, error: "Response tidak valid (bukan JSON)" }));
 
-    return { response, result };
-}
+     return { response, result };
+ }
 
 async function saveCurrentFrameToGallery() {
-    try {
-        document.getElementById("loadingSpinner").style.display = "block";
-        const imageBase64 = captureFrameAsBase64();
-        lastInputPreviewBase64 = imageBase64;
-        const fileName = `money_snapshot_${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`;
+     try {
+         const spinner = document.getElementById("loadingSpinner");
+         if (spinner) {
+             spinner.style.display = "block";
+         }
+         const imageBase64 = captureFrameAsBase64();
+         lastInputPreviewBase64 = imageBase64;
+         const fileName = `money_snapshot_${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`;
 
-        const { response, result } = await postMoneyForProcessing(imageBase64, {
-            save_to_gallery: true,
-            original_name: fileName,
-        });
+         const { response, result } = await postMoneyForProcessing(imageBase64, {
+             save_to_gallery: true,
+             original_name: fileName,
+         });
 
-        document.getElementById("loadingSpinner").style.display = "none";
+         if (spinner) {
+             spinner.style.display = "none";
+         }
 
-        if (!response.ok || !result.success) {
-            displayError(result.error || ("HTTP error! status: " + response.status));
-            return;
-        }
+         if (!response.ok || !result.success) {
+             displayError(result.error || ("HTTP error! status: " + response.status));
+             return;
+         }
 
-        displayDetectionResult(result);
-        if (result.detected_money && result.confidence >= 0.75) {
-            speakDetectionResult(result.message);
-            lastDetectedMoney = result.detected_money;
-            lastSpeechTime = Date.now();
-        }
-        if (result.saved_image_id) {
-            const resultDiv = document.getElementById("detectionResult");
-            resultDiv.innerHTML += `<div class="small text-muted mt-2">Tersimpan ke Gallery (ID: ${result.saved_image_id}).</div>`;
-        }
-    } catch (error) {
-        console.error("[ERROR] saveCurrentFrameToGallery:", error);
-        displayError("Error: " + error.message);
-        document.getElementById("loadingSpinner").style.display = "none";
-    }
-}
+         displayDetectionResult(result);
+         if (result.detected_money && result.confidence >= 0.75) {
+             // Extract hanya nominal untuk speech (misal: "20000")
+             const nominalOnly = result.detected_money;
+             // Mapping nominal ke nama rupiah untuk speech
+             const nominalNames = {
+                 "1000": "Seribu Rupiah",
+                 "2000": "Dua Ribu Rupiah",
+                 "5000": "Lima Ribu Rupiah",
+                 "10000": "Sepuluh Ribu Rupiah",
+                 "20000": "Dua Puluh Ribu Rupiah",
+                 "50000": "Lima Puluh Ribu Rupiah",
+                 "100000": "Seratus Ribu Rupiah"
+             };
+             const speechText = nominalNames[nominalOnly] || "Uang Terdeteksi";
+             
+             speakDetectionResult(speechText);
+             lastDetectedMoney = result.detected_money;
+             lastSpeechTime = Date.now();
+         }
+         if (result.saved_image_id) {
+             const resultDiv = document.getElementById("detectionResult");
+             resultDiv.innerHTML += `<div class="small text-muted mt-2">Tersimpan ke Gallery (ID: ${result.saved_image_id}).</div>`;
+         }
+     } catch (error) {
+         console.error("[ERROR] saveCurrentFrameToGallery:", error);
+         displayError("Error: " + error.message);
+         const spinner = document.getElementById("loadingSpinner");
+         if (spinner) {
+             spinner.style.display = "none";
+         }
+     }
+ }
 
 async function checkUploadedImageToGallery() {
     // Backward compatible alias (single file) - use the new multi-upload flow
@@ -943,53 +1024,73 @@ function renderMoneyPreviews() {
 }
 
 async function processSelectedMoneyUploadsToGallery() {
-    const input = document.getElementById("moneyFileInput");
-    const btn = document.getElementById("btnUploadCheck");
+     const input = document.getElementById("moneyFileInput");
+     const btn = document.getElementById("btnUploadCheck");
 
-    if (!moneySelectedFiles.length && input?.files?.length) {
-        moneySelectedFiles = Array.from(input.files);
-    }
+     if (!moneySelectedFiles.length && input?.files?.length) {
+         moneySelectedFiles = Array.from(input.files);
+     }
 
-    if (!moneySelectedFiles.length) {
-        displayError("Pilih minimal 1 gambar dulu.");
-        return;
-    }
+     if (!moneySelectedFiles.length) {
+         displayError("Pilih minimal 1 gambar dulu.");
+         return;
+     }
 
-    try {
-        if (btn) btn.disabled = true;
-        document.getElementById("loadingSpinner").style.display = "block";
+     try {
+         if (btn) btn.disabled = true;
+         const spinner = document.getElementById("loadingSpinner");
+         if (spinner) {
+             spinner.style.display = "block";
+         }
 
-        for (let index = 0; index < moneySelectedFiles.length; index++) {
-            const file = moneySelectedFiles[index];
-            updateStatus(`Memproses ${index + 1}/${moneySelectedFiles.length}...`, "active");
-            const imageBase64 = await fileToDataURL(file);
-            lastInputPreviewBase64 = imageBase64;
+         for (let index = 0; index < moneySelectedFiles.length; index++) {
+             const file = moneySelectedFiles[index];
+             updateStatus(`Memproses ${index + 1}/${moneySelectedFiles.length}...`, "active");
+             const imageBase64 = await fileToDataURL(file);
+             lastInputPreviewBase64 = imageBase64;
 
-            const { response, result } = await postMoneyForProcessing(imageBase64, {
-                save_to_gallery: true,
-                original_name: file.name,
-            });
+             const { response, result } = await postMoneyForProcessing(imageBase64, {
+                 save_to_gallery: true,
+                 original_name: file.name,
+             });
 
-            if (!response.ok || !result.success) {
-                displayError(result.error || ("HTTP error! status: " + response.status));
-                break;
-            }
+             if (!response.ok || !result.success) {
+                 displayError(result.error || ("HTTP error! status: " + response.status));
+                 break;
+             }
 
-            displayDetectionResult(result);
-            if (result.detected_money && result.confidence >= 0.75) {
-                enqueueMoneySpeech(result.message);
-            }
-        }
+             displayDetectionResult(result);
+             if (result.detected_money && result.confidence >= 0.75) {
+                 // Extract hanya nominal untuk speech (misal: "20000")
+                 const nominalOnly = result.detected_money;
+                 // Mapping nominal ke nama rupiah untuk speech
+                 const nominalNames = {
+                     "1000": "Seribu Rupiah",
+                     "2000": "Dua Ribu Rupiah",
+                     "5000": "Lima Ribu Rupiah",
+                     "10000": "Sepuluh Ribu Rupiah",
+                     "20000": "Dua Puluh Ribu Rupiah",
+                     "50000": "Lima Puluh Ribu Rupiah",
+                     "100000": "Seratus Ribu Rupiah"
+                 };
+                 const speechText = nominalNames[nominalOnly] || "Uang Terdeteksi";
+                 
+                 enqueueMoneySpeech(speechText);
+             }
+         }
 
-        updateStatus("Selesai memproses upload.", "info");
-    } catch (error) {
-        console.error("[ERROR] processSelectedMoneyUploadsToGallery:", error);
-        displayError("Error: " + error.message);
-    } finally {
-        document.getElementById("loadingSpinner").style.display = "none";
-        if (btn) btn.disabled = false;
-    }
-}
+         updateStatus("Selesai memproses upload.", "info");
+     } catch (error) {
+         console.error("[ERROR] processSelectedMoneyUploadsToGallery:", error);
+         displayError("Error: " + error.message);
+     } finally {
+         const spinner = document.getElementById("loadingSpinner");
+         if (spinner) {
+             spinner.style.display = "none";
+         }
+         if (btn) btn.disabled = false;
+     }
+ }
 
 function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -1004,31 +1105,51 @@ function fileToDataURL(file) {
  * Display detection result di UI
  */
 function displayDetectionResult(result) {
-    const resultDiv = document.getElementById("detectionResult");
+    const resultDiv = document.getElementById("detectionResultContent");
 
     // retrigger slide animation on update
-    resultDiv.classList.remove("slide-in");
-    void resultDiv.offsetWidth;
-    resultDiv.classList.add("slide-in");
+    const parent = document.getElementById("detectionResult");
+    parent.classList.remove("slide-in");
+    void parent.offsetWidth;
+    parent.classList.add("slide-in");
 
     if (result.detected_money) {
+        const displayMessage = result.message || "Uang Terdeteksi";
         const refSrc = RUPIAH_REFERENCE_IMAGES[String(result.detected_money)] || "";
         const previewHtml = lastInputPreviewBase64
             ? `<div class="mt-2 small text-muted">Gambar yang dicek:</div>
-               <img src="${lastInputPreviewBase64}" alt="Input" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" />`
+                <img src="${lastInputPreviewBase64}" alt="Input" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" />`
             : "";
         const refHtml = refSrc
             ? `<div class="mt-3 small text-muted">Contoh dari dataset:</div>
-               <img src="${refSrc}" alt="Referensi" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" onerror="this.style.display='none';" />`
+                <img src="${refSrc}" alt="Referensi" class="w-100 rounded mt-1" style="max-height: 260px; object-fit: contain;" onerror="this.style.display='none';" />`
             : "";
+        
+        // Extract hanya nominal untuk speech (misal: "20000")
+        const nominalOnly = result.detected_money;
+        // Mapping nominal ke nama rupiah untuk speech
+        const nominalNames = {
+            "1000": "Seribu Rupiah",
+            "2000": "Dua Ribu Rupiah",
+            "5000": "Lima Ribu Rupiah",
+            "10000": "Sepuluh Ribu Rupiah",
+            "20000": "Dua Puluh Ribu Rupiah",
+            "50000": "Lima Puluh Ribu Rupiah",
+            "100000": "Seratus Ribu Rupiah"
+        };
+        const speechText = nominalNames[nominalOnly] || "Uang Terdeteksi";
+        
         resultDiv.innerHTML = "<div class=\"result-status\">✅ Uang Terdeteksi</div>" +
-            "<div class=\"result-money\">" + result.message + "</div>" +
+            "<div class=\"result-money\">" + speechText + "</div>" +
             "<div class=\"result-confidence\">Confidence: " + (result.confidence * 100).toFixed(1) + "%</div>" +
-            "<div class=\"detection-info\"><strong>Nominal:</strong> Rp " + 
+            "<div class=\"detection-info\"><strong>Status:</strong> " + displayMessage + "<br><strong>Nominal:</strong> Rp " + 
             result.detected_money.toLocaleString("id-ID") + "<br>" +
             "<strong>Jumlah deteksi:</strong> " + result.detections.length + " objek</div>" +
             previewHtml +
             refHtml;
+        
+        // Text-to-speech: Hanya baca nama rupiah saja (misal "Dua Puluh Ribu Rupiah")
+        speakDetectionResult(speechText);
     } else {
         resultDiv.innerHTML = "<div class=\"result-status\">⚠️ Tidak Ada Uang Terdeteksi</div>" +
             "<div style=\"font-size: 0.95rem; margin-top: 10px;\">Arahkan kamera ke uang Rupiah. Pastikan pencahayaan cukup dan posisi uang jelas terlihat.</div>";
@@ -1038,11 +1159,17 @@ function displayDetectionResult(result) {
 /**
  * Display error message
  */
+/**
+ * Display error message
+ */
 function displayError(errorMessage) {
-    const resultDiv = document.getElementById("detectionResult");
-    resultDiv.classList.remove("slide-in");
-    void resultDiv.offsetWidth;
-    resultDiv.classList.add("slide-in");
+    const resultDiv = document.getElementById("detectionResultContent");
+    if (!resultDiv) return;
+    
+    const parent = document.getElementById("detectionResult");
+    parent.classList.remove("slide-in");
+    void parent.offsetWidth;
+    parent.classList.add("slide-in");
     resultDiv.innerHTML = "<div class=\"result-status\">❌ Error</div>" +
         "<div style=\"font-size: 0.95rem; margin-top: 10px; color: #e74c3c;\">" + errorMessage + "</div>";
 }
@@ -1051,41 +1178,47 @@ function displayError(errorMessage) {
  * TEXT-TO-SPEECH IMPLEMENTATION
  */
 function speakDetectionResult(message) {
-    const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance || 
-                                     window.webkitSpeechSynthesisUtterance;
-    
-    if (!SpeechSynthesisUtterance) {
-        console.warn("[WARNING] Web Speech API tidak didukung browser ini");
-        return;
-    }
+     const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance || 
+                                      window.webkitSpeechSynthesisUtterance;
+     
+     if (!SpeechSynthesisUtterance) {
+         console.warn("[WARNING] Web Speech API tidak didukung browser ini");
+         return;
+     }
 
-    try {
-        window.speechSynthesis.cancel();
+     try {
+         // Only cancel if there's actually something speaking
+         if (window.speechSynthesis.speaking) {
+             window.speechSynthesis.cancel();
+         }
 
-        const utterance = new SpeechSynthesisUtterance(message);
+         const utterance = new SpeechSynthesisUtterance(message);
 
-        utterance.lang = "id-ID";
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
+         utterance.lang = "id-ID";
+         utterance.rate = 0.9;
+         utterance.pitch = 1.0;
+         utterance.volume = 1.0;
 
-        utterance.onstart = function() {
-            console.log("[INFO] Speech started");
-        };
+         utterance.onstart = function() {
+             console.log("[INFO] Speech started");
+         };
 
-        utterance.onend = function() {
-            console.log("[INFO] Speech ended");
-        };
+         utterance.onend = function() {
+             console.log("[INFO] Speech ended");
+         };
 
-        utterance.onerror = function(event) {
-            console.error("[ERROR] Speech error:", event.error);
-        };
+         utterance.onerror = function(event) {
+             // Ignore "interrupted" errors as they're often harmless
+             if (event.error !== "interrupted") {
+                 console.error("[ERROR] Speech error:", event.error);
+             }
+         };
 
-        window.speechSynthesis.speak(utterance);
-    } catch (error) {
-        console.error("[ERROR] speakDetectionResult:", error);
-    }
-}
+         window.speechSynthesis.speak(utterance);
+     } catch (error) {
+         console.error("[ERROR] speakDetectionResult:", error);
+     }
+ }
 
 /**
  * Initialize aplikasi saat page load
@@ -1093,6 +1226,7 @@ function speakDetectionResult(message) {
 window.addEventListener("load", async function() {
     console.log("[INFO] Initializing Money Detector...");
     await initCamera();
+    initializeDetectionMode();
 });
 
 /**
