@@ -5,6 +5,9 @@ WORKDIR /app
 # 1. Instal OS-level dependencies untuk OpenCV dan image processing
 # UBAH libgl1-mesa-glx MENJADI libgl1
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    nodejs \
+    npm \
     libsm6 \
     libxext6 \
     libxrender-dev \
@@ -15,6 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 2. Create non-root user untuk security
 RUN useradd -m -u 1000 appuser
+
+# Salin file konfigurasi package Node.js terlebih dahulu
+# Ini memanfaatkan Docker cache agar tidak download ulang jika tidak ada perubahan
+COPY package.json package-lock.json ./
+
+# Jalankan npm install
+# Kita gunakan 'npm ci' karena Anda punya package-lock.json.
+# Ini jauh lebih cepat, stabil, dan bersih untuk lingkungan Docker/Production.
+RUN npm ci --omit=dev
 
 # 3. Salin requirements.txt terlebih dahulu untuk memanfaatkan cache Docker
 COPY requirements.txt .
